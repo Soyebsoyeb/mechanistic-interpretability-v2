@@ -398,7 +398,7 @@ If the directions are orthonormal, this is exactly an orthogonal projection. If 
 
 ### A.7.5 Example
 
-Let $S = \text{span}\left(\begin{bmatrix}1 \\ 0\end{bmatrix}\right)$, so $U = \begin{bmatrix}1 \\ 0\end{bmatrix}$.
+Let $S = \text{span}\left(\begin{bmatrix}1 \\\\ 0\end{bmatrix}\right)$, so $U = \begin{bmatrix}1 \\\\ 0\end{bmatrix}$.
 
 Then:
 
@@ -474,7 +474,7 @@ $$
 
 ### A.8.5 Example
 
-For $A = \begin{bmatrix}2 & 5 \\ 1 & 3\end{bmatrix}$:
+For $A = \begin{bmatrix}2 & 5 \\\\ 1 & 3\end{bmatrix}$:
 
 $$
 \text{tr}(A) = 2 + 3 = 5
