@@ -1,10 +1,46 @@
 # Appendix D — Optimization for Mechanistic Interpretability
 
+> Part of a larger reference document. Cross-references to "Appendix A" and "Appendix B" refer to companion sections not included here.
+
+## Table of Contents
+
+- [D.1 Introduction](#d1-introduction)
+  - [D.1.1 Conventions](#d11-conventions)
+- [D.2 Gradients](#d2-gradients)
+  - [D.2.1 Definition](#d21-definition)
+  - [D.2.2 The Gradient Points in the Direction of Steepest Ascent](#d22-the-gradient-points-in-the-direction-of-steepest-ascent)
+  - [D.2.3 Backpropagation](#d23-backpropagation)
+- [D.3 Gradient Descent](#d3-gradient-descent)
+  - [D.3.1 Update Rule](#d31-update-rule)
+  - [D.3.2 Convergence Analysis on a Quadratic](#d32-convergence-analysis-on-a-quadratic)
+  - [D.3.3 Worked Example](#d33-worked-example)
+- [D.4 Second-Order Methods and the Hessian](#d4-second-order-methods-and-the-hessian)
+  - [D.4.1 Second-Order Taylor Expansion](#d41-second-order-taylor-expansion)
+  - [D.4.2 Newton's Method](#d42-newtons-method)
+  - [D.4.3 Classifying Critical Points](#d43-classifying-critical-points)
+- [D.5 Momentum](#d5-momentum)
+  - [D.5.1 Update Rule](#d51-update-rule)
+  - [D.5.2 Why Momentum Helps: Analysis on the Same Quadratic](#d52-why-momentum-helps-analysis-on-the-same-quadratic)
+  - [D.5.3 Nesterov Momentum](#d53-nesterov-momentum)
+- [D.6 Adaptive Methods](#d6-adaptive-methods)
+  - [D.6.1 AdaGrad](#d61-adagrad)
+  - [D.6.2 RMSProp](#d62-rmsprop)
+  - [D.6.3 Adam](#d63-adam)
+- [D.7 Stochastic Gradient Descent](#d7-stochastic-gradient-descent)
+  - [D.7.1 The Minibatch Gradient is Unbiased](#d71-the-minibatch-gradient-is-unbiased)
+  - [D.7.2 Variance Scales as 1/B](#d72-variance-scales-as-1b)
+- [D.8 Convexity](#d8-convexity)
+- [D.9 Common Identities Reference](#d9-common-identities-reference)
+- [D.10 Summary: MI-Relevant Optimization Concepts](#d10-summary-mi-relevant-optimization-concepts)
+
+---
+
 ## D.1 Introduction
 
 Training a neural network is an optimization problem: find parameters $\theta$ minimizing a loss $L(\theta)$. This appendix treats gradient-based optimization rigorously enough to explain *why* the standard tricks (momentum, Adam, learning-rate limits) work, rather than just stating the update rules. The central tool is the **Hessian** — the matrix of second derivatives — and everything in Appendix A about eigenvalues and eigenvectors (§A.5) applies to it directly: the Hessian's eigenvalues govern how fast gradient descent converges, and its eigenvectors give the "natural coordinates" in which the optimization problem decouples into independent 1-D problems.
 
 If you can answer these questions, you're ready:
+
 - Why does gradient descent need a learning rate smaller than $2/\lambda_{\max}$ of the Hessian, and where does that number come from?
 - Why does an *ill-conditioned* loss landscape make plain gradient descent slow, and why does momentum help?
 - Why does Adam divide by $(1-\beta_2^t)$, and not just use $\sqrt{v_t}$ directly?
