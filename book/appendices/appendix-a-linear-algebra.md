@@ -10,6 +10,15 @@ If you can answer these questions, you're ready:
 - How does the SVD reveal a matrix's "true rank"?
 - What does the trace have to do with how information flows through a layer?
 
+### A.1.1 Conventions
+
+Throughout this appendix:
+- Vectors are column vectors; $v \in \mathbb{R}^n$ means $v$ is an $n \times 1$ matrix.
+- Unless stated otherwise, all matrices have real entries. Where a claim depends on the field (e.g. existence of real eigenvalues), we say so explicitly.
+- $\|\cdot\|$ without a subscript denotes the Euclidean ($\ell_2$) norm on vectors.
+- "Symmetric" means $A = A^\top$; this is only defined for square matrices.
+- Results stated for square $A \in \mathbb{R}^{n \times n}$ do **not** automatically extend to rectangular matrices unless noted (e.g. eigenvalues are defined only for square matrices, while singular values are defined for any $m \times n$ matrix).
+
 ---
 
 ## A.2 Vectors and Spaces
@@ -220,7 +229,7 @@ The matrix $A$ acts on its eigenvector by *scaling* it by $\lambda$, without cha
 - If $|\lambda| > 1$: The direction is stretched
 - If $|\lambda| < 1$: The direction is compressed
 - If $\lambda = 0$: The direction is killed (maps to zero)
-- If $\lambda$ is complex: The direction rotates (not possible for symmetric real matrices)
+- If $\lambda$ is complex: The eigenvector has complex entries ($v \in \mathbb{C}^n$) and comes with a conjugate partner $\bar\lambda, \bar v$; the pair spans a real 2-dimensional invariant subspace on which $A$ acts as a rotation combined with a scaling by $|\lambda|$. This cannot occur for symmetric real matrices (§A.5.4), whose eigenvalues are always real.
 
 ### A.5.3 The Characteristic Equation
 
@@ -317,6 +326,8 @@ where:
 
 The rank $r$ is the number of nonzero singular values.
 
+**Existence and uniqueness.** This factorization exists for *every* real matrix $W$, with no assumptions on rank, shape, or invertibility (this is the content of the SVD existence theorem). The singular values $\sigma_1 \ge \cdots \ge \sigma_r$ are always uniquely determined by $W$. The singular vectors are *not* uniquely determined in general: if a singular value has multiplicity $>1$, its corresponding singular vectors can be rotated within the associated subspace, and any singular vector can be replaced by its negation (with a matching sign flip on the paired vector) without changing $U\Sigma V^\top$.
+
 ### A.6.2 Geometric Interpretation
 
 The SVD reveals the *action* of $W$ as three steps:
@@ -335,19 +346,27 @@ $$
 
 If $W$ is symmetric positive definite, then $U = V$ and $\Sigma = \Lambda$, so the SVD equals the eigenvalue decomposition.
 
-### A.6.4 Low-Rank Approximation (Eckart-Young)
+### A.6.4 Low-Rank Approximation (Eckart–Young–Mirsky)
 
-The best rank-$k$ approximation to $W$ (in Frobenius norm) is:
-
-$$
-W_k = U_k \Sigma_k V_k^\top
-$$
-
-where we keep only the top $k$ singular values and vectors. The approximation error is:
+Fix $1 \le k \le r$ and let $U_k \in \mathbb{R}^{m \times k}$, $V_k \in \mathbb{R}^{n \times k}$ denote the first $k$ columns of $U, V$, and $\Sigma_k = \text{diag}(\sigma_1, \ldots, \sigma_k)$. Define the truncated SVD:
 
 $$
-\|W - W_k\|_F = \sqrt{\sum_{i=k+1}^r \sigma_i^2}
+W_k = U_k \Sigma_k V_k^\top = \sum_{i=1}^k \sigma_i u_i v_i^\top
 $$
+
+**Theorem (Eckart–Young–Mirsky).** Among all matrices of rank at most $k$, $W_k$ minimizes the distance to $W$ in *both* the Frobenius norm and the spectral norm:
+
+$$
+W_k = \arg\min_{\text{rank}(B) \le k} \|W - B\|_F = \arg\min_{\text{rank}(B) \le k} \|W - B\|_2
+$$
+
+with the resulting errors given exactly by the discarded singular values:
+
+$$
+\|W - W_k\|_F = \sqrt{\sum_{i=k+1}^r \sigma_i^2}, \qquad \|W - W_k\|_2 = \sigma_{k+1}
+$$
+
+(if $k \ge r$, both errors are $0$). If $\sigma_k = \sigma_{k+1}$, the minimizer $W_k$ is not unique — the theorem guarantees $W_k$ is *a* minimizer, not the only one. The Frobenius-norm case is due to Eckart & Young (1936); Mirsky (1960) extended it to any unitarily invariant norm, which includes the spectral norm as a special case.
 
 ### A.6.5 MI Connection: Superposition and the SVD
 
@@ -495,10 +514,14 @@ $$
 
 ### A.8.4 MI Connection: Information Flow
 
-1. **Attention**: In attention, $\text{tr}(QK^\top)$ (or more precisely, $\text{tr}(\text{softmax}(QK^\top))$) relates to how much information flows from keys to queries
-2. **Weight decay**: The trace of a weight matrix's covariance appears in regularization terms
-3. **Effective capacity**: The trace of the Fisher information matrix relates to how many independent parameters the model can use
-4. **Gradient flow**: $\text{tr}(W^\top W)$ is the squared Frobenius norm, often used as a regularizer
+1. **Attention self-weight**: Let $A = \text{softmax}(QK^\top / \sqrt{d_k}) \in \mathbb{R}^{n \times n}$ be the (row-stochastic) attention matrix for a sequence of length $n$, so each row sums to 1: $\sum_j A_{ij} = 1$. Its trace,
+   $$
+   \text{tr}(A) = \sum_{i=1}^n A_{ii},
+   $$
+   sums the diagonal entries, i.e. the weight each token places on *itself*. Since every entry satisfies $0 \le A_{ij} \le 1$, we have $0 \le \text{tr}(A) \le n$. A trace close to $n$ means the head is close to the identity map (each token mostly attends to itself, so little information is mixed across positions); a trace close to $0$ means the head routes information almost entirely to *other* positions. Note this is a statement about $A$ *after* the softmax — the raw pre-softmax scores $QK^\top$ do not have a comparably clean interpretation via their trace, since they are not row-stochastic.
+2. **Weight decay**: For a weight matrix $W$ whose rows/columns are treated as samples, the trace of the associated covariance matrix, $\text{tr}(\text{Cov}(W))$, equals the sum of the per-dimension variances (Bienaymé-type identity) and appears in ridge-style penalties on the second moment of $W$.
+3. **Effective capacity**: For a model with parameters $\theta$ and log-likelihood $\ell(\theta)$, the Fisher information matrix is $F(\theta) = \mathbb{E}\!\left[\nabla_\theta \ell(\theta)\,\nabla_\theta \ell(\theta)^\top\right]$, and $\text{tr}(F) = \sum_i \lambda_i(F)$ sums its (non-negative) eigenvalues. A commonly used scalar summary of "effective number of parameters" under an $\ell_2$ prior of strength $\alpha$ is $\text{tr}\!\left(F(F + \alpha I)^{-1}\right)$, which interpolates between $0$ (heavily regularized, most directions unused) and the parameter count (unregularized).
+4. **Gradient flow**: $\text{tr}(W^\top W) = \|W\|_F^2$ exactly (§A.9.1), so any regularizer written as $\text{tr}(W^\top W)$ is literally weight decay on $W$; this is an identity, not an analogy.
 
 ### A.8.5 Example
 
