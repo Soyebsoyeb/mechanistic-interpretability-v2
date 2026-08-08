@@ -1,40 +1,5 @@
 # Appendix D — Optimization for Mechanistic Interpretability
 
-> Part of a larger reference document. Cross-references to "Appendix A" and "Appendix B" refer to companion sections not included here.
-
-## Table of Contents
-
-- [D.1 Introduction](#d1-introduction)
-  - [D.1.1 Conventions](#d11-conventions)
-- [D.2 Gradients](#d2-gradients)
-  - [D.2.1 Definition](#d21-definition)
-  - [D.2.2 The Gradient Points in the Direction of Steepest Ascent](#d22-the-gradient-points-in-the-direction-of-steepest-ascent)
-  - [D.2.3 Backpropagation](#d23-backpropagation)
-- [D.3 Gradient Descent](#d3-gradient-descent)
-  - [D.3.1 Update Rule](#d31-update-rule)
-  - [D.3.2 Convergence Analysis on a Quadratic](#d32-convergence-analysis-on-a-quadratic)
-  - [D.3.3 Worked Example](#d33-worked-example)
-- [D.4 Second-Order Methods and the Hessian](#d4-second-order-methods-and-the-hessian)
-  - [D.4.1 Second-Order Taylor Expansion](#d41-second-order-taylor-expansion)
-  - [D.4.2 Newton's Method](#d42-newtons-method)
-  - [D.4.3 Classifying Critical Points](#d43-classifying-critical-points)
-- [D.5 Momentum](#d5-momentum)
-  - [D.5.1 Update Rule](#d51-update-rule)
-  - [D.5.2 Why Momentum Helps: Analysis on the Same Quadratic](#d52-why-momentum-helps-analysis-on-the-same-quadratic)
-  - [D.5.3 Nesterov Momentum](#d53-nesterov-momentum)
-- [D.6 Adaptive Methods](#d6-adaptive-methods)
-  - [D.6.1 AdaGrad](#d61-adagrad)
-  - [D.6.2 RMSProp](#d62-rmsprop)
-  - [D.6.3 Adam](#d63-adam)
-- [D.7 Stochastic Gradient Descent](#d7-stochastic-gradient-descent)
-  - [D.7.1 The Minibatch Gradient is Unbiased](#d71-the-minibatch-gradient-is-unbiased)
-  - [D.7.2 Variance Scales as 1/B](#d72-variance-scales-as-1b)
-- [D.8 Convexity](#d8-convexity)
-- [D.9 Common Identities Reference](#d9-common-identities-reference)
-- [D.10 Summary: MI-Relevant Optimization Concepts](#d10-summary-mi-relevant-optimization-concepts)
-
----
-
 ## D.1 Introduction
 
 Training a neural network is an optimization problem: find parameters $\theta$ minimizing a loss $L(\theta)$. This appendix treats gradient-based optimization rigorously enough to explain *why* the standard tricks (momentum, Adam, learning-rate limits) work, rather than just stating the update rules. The central tool is the **Hessian** — the matrix of second derivatives — and everything in Appendix A about eigenvalues and eigenvectors (§A.5) applies to it directly: the Hessian's eigenvalues govern how fast gradient descent converges, and its eigenvectors give the "natural coordinates" in which the optimization problem decouples into independent 1-D problems.
@@ -70,7 +35,13 @@ $$
 
 **Claim**: among all unit vectors $u$, the directional derivative $\nabla L^\top u$ is maximized by $u = \nabla L / \|\nabla L\|$.
 
-**Proof**: by the Cauchy–Schwarz form of the dot product (Appendix A §A.2.2), $\nabla L^\top u = \|\nabla L\|\,\|u\|\cos\theta = \|\nabla L\|\cos\theta$ for unit $u$, which is maximized exactly when $\cos\theta = 1$, i.e. $u$ points in the same direction as $\nabla L$. $\blacksquare$
+**Proof**: by the Cauchy–Schwarz form of the dot product (Appendix A §A.2.2),
+
+$$
+\nabla L^\top u = \|\nabla L\|\,\|u\|\cos\theta = \|\nabla L\|\cos\theta
+$$
+
+for unit $u$, which is maximized exactly when $\cos\theta = 1$, i.e. $u$ points in the same direction as $\nabla L$. $\blacksquare$
 
 This is *why* gradient descent moves in the direction $-\nabla L$: it is, to first order, the direction of steepest local *decrease*.
 
@@ -97,7 +68,7 @@ where $\eta > 0$ is the **learning rate** (step size).
 To understand *why* this converges (and how fast), analyze the idealized case of a quadratic loss centered at the minimum $\theta^\star = 0$:
 
 $$
-L(\theta) = \tfrac{1}{2}\theta^\top H \theta, \qquad \nabla L(\theta) = H\theta
+L(\theta) = \frac{1}{2}\theta^\top H \theta, \qquad \nabla L(\theta) = H\theta
 $$
 
 with $H$ symmetric positive definite (all eigenvalues $\lambda_i > 0$ — this makes $\theta=0$ the unique global minimum; see §D.4.3). Substituting into the update rule:
@@ -109,21 +80,37 @@ $$
 Diagonalize $H = Q\Lambda Q^\top$ (Appendix A §A.5.4) and change coordinates to $\phi_t = Q^\top \theta_t$ (i.e. work in the eigenbasis of $H$). Since $Q^\top(I-\eta H)Q = I - \eta\Lambda$ is diagonal, the update **decouples into $n$ independent 1-D problems**, one per eigenvalue:
 
 $$
-\phi_{t+1}^{(i)} = (1 - \eta\lambda_i)\,\phi_t^{(i)} \quad \implies \quad \phi_t^{(i)} = (1-\eta\lambda_i)^t\, \phi_0^{(i)}
+\phi_{t+1}^{(i)} = (1 - \eta\lambda_i)\,\phi_t^{(i)}
+$$
+
+$$
+\phi_t^{(i)} = (1-\eta\lambda_i)^t\, \phi_0^{(i)}
 $$
 
 This single line explains most of the qualitative behavior of gradient descent:
 
 - **Convergence requires** $|1 - \eta\lambda_i| < 1$ for every $i$, i.e. $0 < \eta < 2/\lambda_i$ for every eigenvalue. Since this must hold for the *largest* eigenvalue, the binding constraint is
+
   $$
   \eta < \frac{2}{\lambda_{\max}}
   $$
+
   — exceeding this causes the corresponding coordinate to diverge, oscillating with growing amplitude.
+
 - **Convergence speed is set by the slowest-decaying coordinate**, i.e. the eigenvalue $\lambda_i$ for which $|1-\eta\lambda_i|$ is closest to 1. For a fixed $\eta$, small eigenvalues (flat, "sloppy" directions of the loss) shrink slowly; large eigenvalues (steep, "stiff" directions) shrink quickly. The overall convergence rate is governed by whichever is worse — usually the smallest eigenvalue, once $\eta$ is chosen near its stability limit for the largest one.
+
 - **The condition number** $\kappa = \lambda_{\max}/\lambda_{\min}$ controls how bad this tension is. The learning rate that minimizes the *worst-case* per-step contraction factor $\max_i |1-\eta\lambda_i|$ is
+
   $$
-  \eta^\star = \frac{2}{\lambda_{\max}+\lambda_{\min}}, \qquad \text{giving worst-case rate} \quad \rho = \frac{\lambda_{\max}-\lambda_{\min}}{\lambda_{\max}+\lambda_{\min}} = \frac{\kappa - 1}{\kappa+1}
+  \eta^\star = \frac{2}{\lambda_{\max}+\lambda_{\min}}
   $$
+
+  giving worst-case rate
+
+  $$
+  \rho = \frac{\lambda_{\max}-\lambda_{\min}}{\lambda_{\max}+\lambda_{\min}} = \frac{\kappa - 1}{\kappa+1}
+  $$
+
   As $\kappa \to \infty$ (very ill-conditioned loss), $\rho \to 1$: convergence stalls, because no single $\eta$ can be both large enough to move quickly along flat directions and small enough to remain stable along steep ones.
 
 ### D.3.3 Worked Example
@@ -151,7 +138,7 @@ so under optimal tuning, the distance to the optimum shrinks by a factor of $0.2
 ### D.4.1 Second-Order Taylor Expansion
 
 $$
-L(\theta + \Delta) \approx L(\theta) + \nabla L(\theta)^\top \Delta + \tfrac{1}{2}\Delta^\top H(\theta) \Delta
+L(\theta + \Delta) \approx L(\theta) + \nabla L(\theta)^\top \Delta + \frac{1}{2}\Delta^\top H(\theta) \Delta
 $$
 
 where $\nabla L(\theta)$ and $H(\theta)$ are evaluated *at the current point* $\theta$ (not at $\theta+\Delta$), and the approximation has error $O(\|\Delta\|^3)$ for $L$ three-times differentiable. Because $H$ is symmetric (§D.1.1), the quadratic term $\Delta^\top H \Delta$ is a genuine quadratic form and everything in §D.3.2 about eigendecomposing it applies locally around any point $\theta$, not just at a global quadratic loss.
@@ -161,7 +148,11 @@ where $\nabla L(\theta)$ and $H(\theta)$ are evaluated *at the current point* $\
 Rather than taking a small step in the gradient direction, Newton's method minimizes the second-order approximation of D.4.1 *exactly*. Treating it as a function of $\Delta$ and setting its gradient to zero:
 
 $$
-\nabla_\Delta \left[\nabla L^\top \Delta + \tfrac12 \Delta^\top H \Delta\right] = \nabla L + H\Delta = 0 \quad \implies \quad \Delta^\star = -H^{-1}\nabla L
+\nabla_\Delta \left[\nabla L^\top \Delta + \frac{1}{2} \Delta^\top H \Delta\right] = \nabla L + H\Delta = 0
+$$
+
+$$
+\Delta^\star = -H^{-1}\nabla L
 $$
 
 giving the update
@@ -202,7 +193,7 @@ so the update direction is a smoothed running average of recent gradients rather
 
 ### D.5.2 Why Momentum Helps: Analysis on the Same Quadratic
 
-Repeating the eigenbasis analysis of §D.3.2 on $L(\theta)=\tfrac12\theta^\top H\theta$ for the momentum update gives, per eigendirection $\lambda_i$, a linear recurrence
+Repeating the eigenbasis analysis of §D.3.2 on $L(\theta)=\frac{1}{2}\theta^\top H\theta$ for the momentum update gives, per eigendirection $\lambda_i$, a linear recurrence
 
 $$
 \phi_{t+1}^{(i)} = (1+\beta)\phi_t^{(i)} - \beta\phi_{t-1}^{(i)} - \eta\lambda_i \phi_t^{(i)}
@@ -211,10 +202,20 @@ $$
 whose characteristic roots (a standard but slightly involved calculation, stated here without full derivation) are minimized in magnitude, simultaneously across *all* eigenvalues $\lambda_i \in [\lambda_{\min}, \lambda_{\max}]$, by the **Polyak optimal parameters**:
 
 $$
-\eta^\star = \frac{4}{\left(\sqrt{\lambda_{\max}} + \sqrt{\lambda_{\min}}\right)^2}, \qquad \beta^\star = \left(\frac{\sqrt{\lambda_{\max}} - \sqrt{\lambda_{\min}}}{\sqrt{\lambda_{\max}} + \sqrt{\lambda_{\min}}}\right)^2
+\eta^\star = \frac{4}{\left(\sqrt{\lambda_{\max}} + \sqrt{\lambda_{\min}}\right)^2}
 $$
 
-giving worst-case per-step contraction $\rho_{\text{mom}} = \sqrt{\beta^\star} = \frac{\sqrt{\kappa}-1}{\sqrt{\kappa}+1}$ — compare to plain gradient descent's $\rho_{\text{GD}} = \frac{\kappa-1}{\kappa+1}$ from §D.3.2. Since $\frac{\sqrt{\kappa}-1}{\sqrt{\kappa}+1} < \frac{\kappa-1}{\kappa+1}$ for every $\kappa > 1$, momentum is *always* asymptotically faster under optimal tuning, and the gap widens as $\kappa$ grows: momentum's dependence on the condition number is $O(\sqrt{\kappa})$ where plain gradient descent's is $O(\kappa)$.
+$$
+\beta^\star = \left(\frac{\sqrt{\lambda_{\max}} - \sqrt{\lambda_{\min}}}{\sqrt{\lambda_{\max}} + \sqrt{\lambda_{\min}}}\right)^2
+$$
+
+giving worst-case per-step contraction
+
+$$
+\rho_{\text{mom}} = \sqrt{\beta^\star} = \frac{\sqrt{\kappa}-1}{\sqrt{\kappa}+1}
+$$
+
+— compare to plain gradient descent's $\rho_{\text{GD}} = \frac{\kappa-1}{\kappa+1}$ from §D.3.2. Since $\frac{\sqrt{\kappa}-1}{\sqrt{\kappa}+1} < \frac{\kappa-1}{\kappa+1}$ for every $\kappa > 1$, momentum is *always* asymptotically faster under optimal tuning, and the gap widens as $\kappa$ grows: momentum's dependence on the condition number is $O(\sqrt{\kappa})$ where plain gradient descent's is $O(\kappa)$.
 
 **Worked example (continuing §D.3.3)**: with $\lambda_{\max}=5,\ \lambda_{\min}=3$, $\sqrt{\lambda_{\max}}=2.236,\ \sqrt{\lambda_{\min}}=1.732$:
 
@@ -223,8 +224,10 @@ $$
 $$
 
 $$
-\rho_{\text{mom}} = \sqrt{0.0161} \approx 0.127 \qquad \text{vs.} \qquad \rho_{\text{GD}} = 0.25 \text{ from §D.3.3}
+\rho_{\text{mom}} = \sqrt{0.0161} \approx 0.127
 $$
+
+compared to $\rho_{\text{GD}} = 0.25$ from §D.3.3.
 
 Momentum roughly doubles the convergence rate here even though the condition number ($\kappa\approx1.67$) is mild — the gap would be far larger for the highly ill-conditioned spectra typical of real loss landscapes (§D.3.3).
 
@@ -281,7 +284,11 @@ with typical defaults $\beta_1 = 0.9,\ \beta_2 = 0.999,\ \epsilon = 10^{-8}$.
 **Why the bias correction is needed**: unrolling $m_t = (1-\beta_1)\sum_{i=1}^t \beta_1^{t-i} g_i$ from $m_0=0$, and assuming (for the purpose of this calculation only) that the true gradient's expectation $E[g_i] = \mu$ is roughly constant over the averaging window:
 
 $$
-E[m_t] = (1-\beta_1)\sum_{i=1}^t \beta_1^{t-i}\, \mu = \mu\,(1-\beta_1)\sum_{i=0}^{t-1}\beta_1^{i} = \mu\,(1-\beta_1)\cdot\frac{1-\beta_1^t}{1-\beta_1} = \mu\,(1-\beta_1^t)
+E[m_t] = (1-\beta_1)\sum_{i=1}^t \beta_1^{t-i}\, \mu = \mu\,(1-\beta_1)\sum_{i=0}^{t-1}\beta_1^{i}
+$$
+
+$$
+= \mu\,(1-\beta_1)\cdot\frac{1-\beta_1^t}{1-\beta_1} = \mu\,(1-\beta_1^t)
 $$
 
 using the finite geometric series identity. So $E[m_t] = \mu(1-\beta_1^t) \ne \mu$ — $m_t$ is a *biased* estimate of the true gradient, especially early in training when $t$ is small and $\beta_1^t$ is still far from zero (with $\beta_1=0.9$, $\beta_1^1=0.9$, so $m_1$ underestimates $\mu$ by a factor of 10 before correction). Dividing by $(1-\beta_1^t)$ exactly cancels this factor, giving $E[\hat{m}_t] = \mu$. The identical argument applies to $v_t$ and $\beta_2$.
@@ -302,7 +309,7 @@ $$
 
 so SGD follows the *true* gradient in expectation, with the minibatch estimate differing from it only by mean-zero noise.
 
-### D.7.2 Variance Scales as $1/B$
+### D.7.2 Variance Scales as 1/B
 
 If each per-example gradient has (coordinate-wise) variance $\sigma^2$ and the examples are drawn independently, the variance of the batch-averaged estimator is $\sigma^2/B$ (Appendix B §B.6.1, $\text{Var}(aX)=a^2\text{Var}(X)$ applied to a sum of $B$ independent terms each scaled by $1/B$). Doubling the batch size halves the gradient noise variance but costs twice the compute per step — this trade-off, not the bias (§D.7.1 shows there is none), is the main quantitative reason batch size matters.
 
@@ -316,7 +323,13 @@ $$
 L(t\theta_1 + (1-t)\theta_2) \le t\,L(\theta_1) + (1-t)\,L(\theta_2)
 $$
 
-Equivalently, for differentiable $L$: $L(\theta_2) \ge L(\theta_1) + \nabla L(\theta_1)^\top(\theta_2-\theta_1)$ for all $\theta_1,\theta_2$ (the tangent line at any point lies below the function everywhere). Equivalently again, for twice-differentiable $L$: $H(\theta) \succeq 0$ (positive semi-definite, §D.4.3) at every $\theta$. For convex $L$, every local minimum is a global minimum, and gradient descent with a small enough fixed step size is guaranteed to converge to it.
+Equivalently, for differentiable $L$:
+
+$$
+L(\theta_2) \ge L(\theta_1) + \nabla L(\theta_1)^\top(\theta_2-\theta_1) \quad \text{for all } \theta_1,\theta_2
+$$
+
+(the tangent line at any point lies below the function everywhere). Equivalently again, for twice-differentiable $L$: $H(\theta) \succeq 0$ (positive semi-definite, §D.4.3) at every $\theta$. For convex $L$, every local minimum is a global minimum, and gradient descent with a small enough fixed step size is guaranteed to converge to it.
 
 **Neural network losses are not convex** in $\theta$ (compositions of even simple non-linear functions generally aren't), so none of these global guarantees apply directly. What *does* transfer is the purely local analysis of §D.3–D.5: near any point (including near a minimum actually reached during training), the second-order Taylor expansion of §D.4.1 is a legitimate local convex (if $H\succeq0$ there) approximation, and the eigenvalue-based convergence/momentum analysis of this appendix describes the *local* dynamics of optimization even though no equivalent global statement is available.
 
@@ -324,28 +337,40 @@ Equivalently, for differentiable $L$: $L(\theta_2) \ge L(\theta_1) + \nabla L(\t
 
 ## D.9 Common Identities Reference
 
+**Gradient descent**
+
 $$
-\theta_{t+1} = \theta_t - \eta\,\nabla_\theta L(\theta_t) \qquad \text{(gradient descent)}
+\theta_{t+1} = \theta_t - \eta\,\nabla_\theta L(\theta_t)
 $$
 
 $$
 \eta_{\text{stable}} < \frac{2}{\lambda_{\max}(H)}, \qquad \eta^\star_{\text{GD}} = \frac{2}{\lambda_{\max}+\lambda_{\min}}, \qquad \rho_{\text{GD}} = \frac{\kappa-1}{\kappa+1}
 $$
 
-$$
-\theta_{t+1} = \theta_t - H(\theta_t)^{-1}\nabla L(\theta_t) \qquad \text{(Newton's method)}
-$$
+**Newton's method**
 
 $$
-v_{t+1} = \beta v_t + \nabla_\theta L(\theta_t), \quad \theta_{t+1} = \theta_t - \eta v_{t+1} \qquad \text{(momentum)}
+\theta_{t+1} = \theta_t - H(\theta_t)^{-1}\nabla L(\theta_t)
+$$
+
+**Momentum**
+
+$$
+v_{t+1} = \beta v_t + \nabla_\theta L(\theta_t), \quad \theta_{t+1} = \theta_t - \eta v_{t+1}
 $$
 
 $$
 \beta^\star = \left(\frac{\sqrt{\kappa}-1}{\sqrt{\kappa}+1}\right)^2, \qquad \rho_{\text{mom}} = \frac{\sqrt{\kappa}-1}{\sqrt{\kappa}+1}
 $$
 
+**Adam**
+
 $$
-m_t = \beta_1 m_{t-1}+(1-\beta_1)g_t,\quad v_t=\beta_2 v_{t-1}+(1-\beta_2)g_t^2,\quad \theta_{t+1}=\theta_t - \eta\frac{m_t/(1-\beta_1^t)}{\sqrt{v_t/(1-\beta_2^t)}+\epsilon} \qquad \text{(Adam)}
+m_t = \beta_1 m_{t-1}+(1-\beta_1)g_t,\quad v_t=\beta_2 v_{t-1}+(1-\beta_2)g_t^2
+$$
+
+$$
+\theta_{t+1}=\theta_t - \eta\,\frac{m_t/(1-\beta_1^t)}{\sqrt{v_t/(1-\beta_2^t)}+\epsilon}
 $$
 
 ---
@@ -353,12 +378,12 @@ $$
 ## D.10 Summary: MI-Relevant Optimization Concepts
 
 | Concept | MI Application |
-|---------|----------------|
+|---|---|
 | Gradient = steepest ascent | Same dot-product geometry as attention/similarity (Appendix A §A.2.2) |
 | Hessian eigendecomposition | Diagnoses ill-conditioning; same machinery as Appendix A §A.5, Appendix B §B.6.3 |
 | Learning-rate stability bound | $\eta < 2/\lambda_{\max}(H)$ — direct consequence of the Hessian spectrum |
 | Saddle points vs. minima | Why saddle points dominate high-dimensional loss landscapes |
-| Momentum's $O(\sqrt\kappa)$ rate | Formal reason momentum accelerates ill-conditioned training |
+| Momentum's $O(\sqrt{\kappa})$ rate | Formal reason momentum accelerates ill-conditioned training |
 | Adam's bias correction | Removes a provable, derivable bias in the raw moment estimates |
 | Adam's diagonal rescaling | Cheap surrogate for the whitening transform of Appendix B §B.6.3 |
 | Minibatch gradient variance | $\sigma^2/B$ — quantifies the batch-size/compute trade-off |
