@@ -391,7 +391,7 @@ Projection takes a vector and drops its component perpendicular to $S$, keeping 
 When we use sparse autoencoders (SAEs) to extract features, we're finding directions $d_i$ and then projecting activations onto them:
 
 $$
-\text{feature\_strength}_i = d_i^\top \text{activation}
+\text{feature_strength}_i = d_i^\top \text{activation}
 $$
 
 If the directions are orthonormal, this is exactly an orthogonal projection. If they overlap (non-orthogonal), we need to account for the covariance structure.
