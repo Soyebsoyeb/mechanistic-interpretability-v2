@@ -515,9 +515,11 @@ $$
 ### A.8.4 MI Connection: Information Flow
 
 1. **Attention self-weight**: Let $A = \text{softmax}(QK^\top / \sqrt{d_k}) \in \mathbb{R}^{n \times n}$ be the (row-stochastic) attention matrix for a sequence of length $n$, so each row sums to 1: $\sum_j A_{ij} = 1$. Its trace,
+
    $$
    \text{tr}(A) = \sum_{i=1}^n A_{ii},
    $$
+
    sums the diagonal entries, i.e. the weight each token places on *itself*. Since every entry satisfies $0 \le A_{ij} \le 1$, we have $0 \le \text{tr}(A) \le n$. A trace close to $n$ means the head is close to the identity map (each token mostly attends to itself, so little information is mixed across positions); a trace close to $0$ means the head routes information almost entirely to *other* positions. Note this is a statement about $A$ *after* the softmax — the raw pre-softmax scores $QK^\top$ do not have a comparably clean interpretation via their trace, since they are not row-stochastic.
 2. **Weight decay**: For a weight matrix $W$ whose rows/columns are treated as samples, the trace of the associated covariance matrix, $\text{tr}(\text{Cov}(W))$, equals the sum of the per-dimension variances (Bienaymé-type identity) and appears in ridge-style penalties on the second moment of $W$.
 3. **Effective capacity**: For a model with parameters $\theta$ and log-likelihood $\ell(\theta)$, the Fisher information matrix is $F(\theta) = \mathbb{E}\!\left[\nabla_\theta \ell(\theta)\,\nabla_\theta \ell(\theta)^\top\right]$, and $\text{tr}(F) = \sum_i \lambda_i(F)$ sums its (non-negative) eigenvalues. A commonly used scalar summary of "effective number of parameters" under an $\ell_2$ prior of strength $\alpha$ is $\text{tr}\!\left(F(F + \alpha I)^{-1}\right)$, which interpolates between $0$ (heavily regularized, most directions unused) and the parameter count (unregularized).
