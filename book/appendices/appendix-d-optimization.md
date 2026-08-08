@@ -92,7 +92,13 @@ This single line explains most of the qualitative behavior of gradient descent:
 
 ### D.3.3 Worked Example
 
-Reuse the matrix from Appendix A §A.5.6, $H = \begin{bmatrix}4 & 1\\ 1 & 4\end{bmatrix}$, with eigenvalues $\lambda = 3, 5$ found there. The stability limit is $\eta < 2/5 = 0.4$. The optimal fixed learning rate is
+Reuse the matrix from Appendix A §A.5.6:
+
+$$
+H = \begin{bmatrix}4 & 1 \\ 1 & 4\end{bmatrix}
+$$
+
+with eigenvalues $\lambda = 3, 5$ found there. The stability limit is $\eta < 2/5 = 0.4$. The optimal fixed learning rate is
 
 $$
 \eta^\star = \frac{2}{5+3} = 0.25, \qquad \rho = \frac{5-3}{5+3} = 0.25
