@@ -1,0 +1,11 @@
+experiment:
+  id: "ch37_experiment"
+  chapter: 37
+  seed: 42
+
+model:
+  name: "gpt2"
+
+task:
+  name: "placeholder"
+  metric: "accuracy"
