@@ -272,9 +272,29 @@ $$
 
 Eigenvalues: $\lambda = 3, 5$
 
-For $\lambda = 5$: $(A - 5I)v = 0 \implies \begin{bmatrix}-1 & 1 \\ 1 & -1\end{bmatrix}v = 0 \implies v_1 = v_2$, so $v = \frac{1}{\sqrt{2}}\begin{bmatrix}1 \\ 1\end{bmatrix}$
+For $\lambda = 5$:
 
-For $\lambda = 3$: $(A - 3I)v = 0 \implies \begin{bmatrix}1 & 1 \\ 1 & 1\end{bmatrix}v = 0 \implies v_1 = -v_2$, so $v = \frac{1}{\sqrt{2}}\begin{bmatrix}1 \\ -1\end{bmatrix}$
+$$
+(A - 5I)v = 0 \implies \begin{bmatrix}-1 & 1 \\ 1 & -1\end{bmatrix}v = 0 \implies v_1 = v_2
+$$
+
+so
+
+$$
+v = \frac{1}{\sqrt{2}}\begin{bmatrix}1 \\ 1\end{bmatrix}
+$$
+
+For $\lambda = 3$:
+
+$$
+(A - 3I)v = 0 \implies \begin{bmatrix}1 & 1 \\ 1 & 1\end{bmatrix}v = 0 \implies v_1 = -v_2
+$$
+
+so
+
+$$
+v = \frac{1}{\sqrt{2}}\begin{bmatrix}1 \\ -1\end{bmatrix}
+$$
 
 The matrix stretches the "sum" direction by $5\times$ and the "difference" direction by $3\times$.
 
@@ -391,14 +411,18 @@ Projection takes a vector and drops its component perpendicular to $S$, keeping 
 > **MI connection**: When we use sparse autoencoders (SAEs) to extract features, we're finding directions $d_i$ and then projecting activations onto them:
 
 $$
-\text{feature\_strength}_i = d_i^\top \text{activation}
+\text{feature strength}_i = d_i^\top \text{activation}
 $$
 
 > If the directions are orthonormal, this is exactly an orthogonal projection. If they overlap (non-orthogonal), we need to account for the covariance structure.
 
 ### A.7.5 Example
 
-Let $S = \text{span}\left(\begin{bmatrix}1 \\ 0\end{bmatrix}\right)$, so $U = \begin{bmatrix}1 \\ 0\end{bmatrix}$.
+Let $S$ be the span of a single vector:
+
+$$
+S = \text{span}\left(\begin{bmatrix}1 \\ 0\end{bmatrix}\right), \quad U = \begin{bmatrix}1 \\ 0\end{bmatrix}
+$$
 
 Then:
 
@@ -409,7 +433,11 @@ P = UU^\top = \begin{bmatrix}1 \\ 0\end{bmatrix} \begin{bmatrix}1 & 0\end{bmatri
 \end{bmatrix}
 $$
 
-For $v = \begin{bmatrix}a \\ b\end{bmatrix}$:
+For a general vector $v$:
+
+$$
+v = \begin{bmatrix}a \\ b\end{bmatrix}
+$$
 
 $$
 Pv = \begin{bmatrix}1 & 0 \\ 0 & 0\end{bmatrix} \begin{bmatrix}a \\ b\end{bmatrix} = \begin{bmatrix}a \\ 0\end{bmatrix}
@@ -474,7 +502,11 @@ $$
 
 ### A.8.5 Example
 
-For $A = \begin{bmatrix}2 & 5 \\ 1 & 3\end{bmatrix}$:
+For:
+
+$$
+A = \begin{bmatrix}2 & 5 \\ 1 & 3\end{bmatrix}
+$$
 
 $$
 \text{tr}(A) = 2 + 3 = 5
@@ -527,7 +559,11 @@ This measures the maximum stretching factor of the matrix.
 
 ### A.9.4 Example
 
-For $A = \begin{bmatrix}3 & 0 \\ 0 & 4\end{bmatrix}$:
+For:
+
+$$
+A = \begin{bmatrix}3 & 0 \\ 0 & 4\end{bmatrix}
+$$
 
 $$
 \|A\|_F = \sqrt{3^2 + 0^2 + 0^2 + 4^2} = \sqrt{25} = 5
