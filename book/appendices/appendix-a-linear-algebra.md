@@ -24,7 +24,7 @@ A vector $v \in \mathbb{R}^n$ is an ordered list of $n$ numbers. In interpretabi
 
 **Geometric view**: A vector is an arrow from the origin to a point in $n$-dimensional space.
 
-&gt; **Key intuition for MI**: When we say a feature is "represented" in a model, we mean there exists a *direction* $d \in \mathbb{R}^n$ in activation space such that projecting activations onto $d$ recovers that feature's strength.
+> **Key intuition for MI**: When we say a feature is "represented" in a model, we mean there exists a direction $d \in \mathbb{R}^n$ in activation space such that projecting activations onto $d$ recovers that feature's strength.
 
 ### A.2.2 Dot Product and Similarity
 
@@ -45,11 +45,11 @@ where $\theta$ is the angle between them. This gives us:
 - **Similarity**: When $\cos \theta = 1$ (parallel), vectors are maximally similar
 - **Orthogonality**: When $\cos \theta = 0$ ($x^\top y = 0$), vectors are perpendicular and carry independent information
 
-&gt; **MI connection**: The attention mechanism computes dot products between query and key vectors. High dot product $\implies$ high attention $\implies$ information flows between those token positions.
+> **MI connection**: The attention mechanism computes dot products between query and key vectors. High dot product $\implies$ high attention $\implies$ information flows between those token positions.
 
 **Example**:
 
-Let 
+Let
 
 $$
 x = \begin{bmatrix} 1 \\ 2 \end{bmatrix}, \quad y = \begin{bmatrix} 3 \\ 4 \end{bmatrix}
@@ -79,7 +79,7 @@ $$
 \|v\|_2 = \sqrt{v^\top v} = \sqrt{\sum_{i=1}^n v_i^2}
 $$
 
-&gt; **MI connection**: When we measure the "magnitude" of an activation vector, we're computing its norm. Large norms often correspond to high-confidence predictions or salient features.
+> **MI connection**: When we measure the "magnitude" of an activation vector, we're computing its norm. Large norms often correspond to high-confidence predictions or salient features.
 
 ---
 
@@ -99,9 +99,9 @@ $$
 A \in \mathbb{R}^{m \times n}, \quad B \in \mathbb{R}^{n \times k} \implies AB \in \mathbb{R}^{m \times k}
 $$
 
-&gt; **MI connection**:
-&gt; - A fully-connected layer: $h = Wx + b$ (here $W \in \mathbb{R}^{d_{\text{hidden}} \times d_{\text{input}}}$)
-&gt; - An attention head's $QK^\top$ product: dimensions $(n_{\text{queries}} \times d_{\text{head}}) \times (d_{\text{head}} \times n_{\text{keys}}) \to n_{\text{queries}} \times n_{\text{keys}}$
+> **MI connection**:
+> - A fully-connected layer: $h = Wx + b$ (here $W \in \mathbb{R}^{d_{\text{hidden}} \times d_{\text{input}}}$)
+> - An attention head's $QK^\top$ product: dimensions $(n_\text{queries} \times d_\text{head}) \times (d_\text{head} \times n_\text{keys}) \to n_\text{queries} \times n_\text{keys}$
 
 ### A.3.2 Column Space and Range
 
@@ -113,7 +113,7 @@ $$
 
 This is the span of the columns of $A$.
 
-&gt; **Key insight**: When you multiply a matrix by a vector, the output is always a linear combination of the columns. The columns define the *possible outputs* of the transformation.
+> **Key insight**: When you multiply a matrix by a vector, the output is always a linear combination of the columns. The columns define the *possible outputs* of the transformation.
 
 ### A.3.3 Null Space (Kernel)
 
@@ -123,7 +123,7 @@ $$
 \text{Null}(A) = \{v \in \mathbb{R}^n : Av = 0\}
 $$
 
-&gt; **MI connection**: If two different inputs differ only by a vector in the null space, the layer treats them identically. This is a form of *information loss* or *compression*.
+> **MI connection**: If two different inputs differ only by a vector in the null space, the layer treats them identically. This is a form of *information loss* or *compression*.
 
 ### A.3.4 Matrix Multiplication as Composition
 
@@ -133,7 +133,7 @@ $$
 (AB)v = A(Bv)
 $$
 
-&gt; **MI connection**: A neural network is a composition of many linear transformations (interleaved with non-linearities). Understanding the composition helps trace information flow.
+> **MI connection**: A neural network is a composition of many linear transformations (interleaved with non-linearities). Understanding the composition helps trace information flow.
 
 ---
 
@@ -161,7 +161,7 @@ $$
 (Av) \cdot w = v \cdot (A^\top w)
 $$
 
-&gt; **MI connection**: In attention, $QK^\top$ computes pairwise similarities. The transpose is what turns "queries dot keys" into a matrix of all pairwise scores.
+> **MI connection**: In attention, $QK^\top$ computes pairwise similarities. The transpose is what turns "queries dot keys" into a matrix of all pairwise scores.
 
 ### A.4.2 Identity Matrix
 
@@ -199,7 +199,7 @@ $$
 \|Ux\| = \|x\|, \quad (Ux)^\top (Uy) = x^\top y
 $$
 
-&gt; **MI connection**: Orthogonal weight matrices avoid the "dying neuron" problem and preserve gradient magnitudes during backpropagation.
+> **MI connection**: Orthogonal weight matrices avoid the "dying neuron" problem and preserve gradient magnitudes during backpropagation.
 
 ---
 
@@ -217,8 +217,8 @@ $$
 
 The matrix $A$ acts on its eigenvector by *scaling* it by $\lambda$, without changing its direction.
 
-- If $|\lambda| &gt; 1$: The direction is stretched
-- If $|\lambda| &lt; 1$: The direction is compressed
+- If $|\lambda| > 1$: The direction is stretched
+- If $|\lambda| < 1$: The direction is compressed
 - If $\lambda = 0$: The direction is killed (maps to zero)
 - If $\lambda$ is complex: The direction rotates (not possible for symmetric real matrices)
 
@@ -292,7 +292,7 @@ $$
 
 where:
 - $U \in \mathbb{R}^{m \times m}$: orthogonal matrix of **left singular vectors**
-- $\Sigma \in \mathbb{R}^{m \times n}$: diagonal matrix of **singular values** $\sigma_1 \ge \sigma_2 \ge \cdots \ge \sigma_r &gt; 0$
+- $\Sigma \in \mathbb{R}^{m \times n}$: diagonal matrix of **singular values** $\sigma_1 \ge \sigma_2 \ge \cdots \ge \sigma_r > 0$
 - $V \in \mathbb{R}^{n \times n}$: orthogonal matrix of **right singular vectors**
 
 The rank $r$ is the number of nonzero singular values.
@@ -333,7 +333,7 @@ $$
 
 This is *crucial* for mechanistic interpretability.
 
-1. **Superposition**: When a model has more features than dimensions ($n &gt; d$), the SVD reveals which directions are most "important" (largest singular values)
+1. **Superposition**: When a model has more features than dimensions ($n > d$), the SVD reveals which directions are most "important" (largest singular values)
 2. **Pruning**: The low-rank approximation tells us how much information we lose by removing dimensions
 3. **Feature detection**: Left singular vectors $U$ correspond to *output features* (what the layer reads), right singular vectors $V$ correspond to *input features* (what the layer writes)
 4. **Effective rank**: The number of singular values above noise threshold tells us the model's *true* capacity
@@ -398,7 +398,7 @@ If the directions are orthonormal, this is exactly an orthogonal projection. If 
 
 ### A.7.5 Example
 
-Let $S = \text{span}\left(\begin{bmatrix}1 \\\\ 0\end{bmatrix}\right)$, so $U = \begin{bmatrix}1 \\\\ 0\end{bmatrix}$.
+Let $S = \text{span}\left(\begin{bmatrix}1 \\ 0\end{bmatrix}\right)$, so $U = \begin{bmatrix}1 \\ 0\end{bmatrix}$.
 
 Then:
 
@@ -474,7 +474,7 @@ $$
 
 ### A.8.5 Example
 
-For $A = \begin{bmatrix}2 & 5 \\\\ 1 & 3\end{bmatrix}$:
+For $A = \begin{bmatrix}2 & 5 \\ 1 & 3\end{bmatrix}$:
 
 $$
 \text{tr}(A) = 2 + 3 = 5
