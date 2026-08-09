@@ -2,17 +2,17 @@
 
 ## 2.1 What Is a Neural Network, Really?
 
-Before we can reverse engineer a neural network, we need to know what kind of object we are staring at. At first glance, it is a function approximator: a big black box that eats tensors and spits out tensors. But that is like calling a Swiss watch "a thing that tells time." A neural network is a **computational system**: a directed graph of primitive operations that executes an algorithm, layer by layer, edge by edge.
+Before we try to reverse engineer a neural network, we need to know exactly what kind of object it is. At first glance, it looks like a function approximator: a box that takes in tensors and returns tensors. But that description is too shallow. It is like calling a Swiss watch "a thing that tells time." A neural network is a **computational system**: a directed graph of simple operations that runs an algorithm, step by step, edge by edge.
 
-Mechanistic interpretability is the art of reading that algorithm from the weights.
+Mechanistic interpretability is the practice of reading that algorithm back out of the weights.
 
-This chapter gives you the vocabulary and the tools to do that reading. We will:
+This chapter builds the tools for that reading. We will:
 
-- Represent networks as **computational graphs** with precise node and edge semantics.
-- Treat internal representations as **vectors in high dimensional space** and ask what information they carry.
-- Distinguish **local** from **distributed** representations, and see precisely why the claim "neuron 847 fires for cats" is, in general, not a well posed statement about the function the network computes.
-- Identify **features** using linear, nonlinear, and subspace methods.
-- Understand why representation structure emerges from the interaction of architecture, optimization, data, and loss.
+- Define networks as **computational graphs**, with a precise meaning for each node and edge.
+- Treat internal representations as **vectors in a high dimensional space**, and ask exactly what information each vector carries.
+- Separate **local** from **distributed** representations, and prove why the sentence "neuron 847 fires for cats" is, in general, not even a well defined claim about the function the network computes.
+- Learn how to find **features** using linear, nonlinear, and subspace methods.
+- See why the shape of a representation is not an accident. It comes from four forces acting together: architecture, optimization, data, and loss.
 
 Let's begin.
 
@@ -22,19 +22,31 @@ Let's begin.
 
 ### 2.2.1 Definition
 
-A neural network is a **directed acyclic graph (DAG)** $G = (V, E)$ with a finite vertex set $V = \{z_1, \dots, z_n\}$, a finite edge set $E \subseteq V \times V$, and no directed cycle. Because $G$ is a finite DAG, it admits at least one topological ordering, so every node has a well defined computation order. Each node $z_i \in V$ computes a deterministic function of its parents:
+**Definition 2.1 (Computational graph).** A neural network is a **directed acyclic graph (DAG)** $G = (V, E)$, where:
+
+- $V = \{z_1, \dots, z_n\}$ is a finite set of nodes,
+- $E \subseteq V \times V$ is a finite set of directed edges,
+- there is no directed cycle: no sequence of edges leads from a node back to itself.
+
+**Claim.** Every finite DAG has at least one *topological order*, that is, a way to list the nodes $z_{\sigma(1)}, \dots, z_{\sigma(n)}$ so that every edge points from an earlier node to a later one.
+
+*Proof sketch.* Because $G$ is finite and acyclic, at least one node has no incoming edges (otherwise, following edges backward forever would have to repeat a node, giving a cycle). Remove that node and its outgoing edges; the remaining graph is still a finite DAG, so the same argument applies. Repeating this until no nodes remain produces the order. $\blacksquare$
+
+This order matters because it tells us in which order the nodes can actually be computed: every node's parents already have values by the time we reach it.
+
+Each node $z_i \in V$ computes a fixed function of its parents:
 
 $$
 z_i = f_i\bigl(z_{\mathrm{parents}(i)}\bigr), \qquad \mathrm{parents}(i) = \{j : (j,i) \in E\}.
 $$
 
-The output $y$ is the composition of these functions along every directed path from input $x$ to output:
+The network's output $y$ is the composition of these functions along every directed path from the input $x$ to the output:
 
 $$
 y = f_L \circ f_{L-1} \circ \cdots \circ f_1(x).
 $$
 
-For a standard feedforward network with $L$ layers, this becomes:
+For an ordinary feedforward network with $L$ layers, this reads:
 
 $$
 \begin{aligned}
@@ -44,32 +56,32 @@ y &= h^{(L)}.
 \end{aligned}
 $$
 
-Here $W^{(\ell)} \in \mathbb{R}^{d_{\ell} \times d_{\ell-1}}$ and $b^{(\ell)} \in \mathbb{R}^{d_{\ell}}$ are the trainable parameters, and $f^{(\ell)} : \mathbb{R} \to \mathbb{R}$ is applied elementwise to each coordinate of $W^{(\ell)} h^{(\ell-1)} + b^{(\ell)}$.
+Here $W^{(\ell)} \in \mathbb{R}^{d_{\ell} \times d_{\ell-1}}$ and $b^{(\ell)} \in \mathbb{R}^{d_{\ell}}$ are the trainable weights and biases, and $f^{(\ell)} : \mathbb{R} \to \mathbb{R}$ is applied to each entry of $W^{(\ell)} h^{(\ell-1)} + b^{(\ell)}$ separately.
 
-> **Key point.** The *full* computational graph contains every scalar multiply add. For a transformer with $L$ layers, model dimension $d$, and sequence length $n$, this is $O(L \cdot n^2 \cdot d^2)$ operations. We cannot interpret that raw graph directly. We need a **simplified graph** $G' = (V', E')$ whose nodes are meaningful units (features, heads, circuits) and whose edges are information flows between those units.
+> **Key point.** The *full* computational graph includes every single multiply and add. For a transformer with $L$ layers, model width $d$, and sequence length $n$, that is $O(L \cdot n^2 \cdot d^2)$ operations. No person can read that graph directly. We need a **simplified graph** $G' = (V', E')$ whose nodes stand for meaningful units, such as features, attention heads, or circuits, and whose edges show how information moves between them.
 
 ### 2.2.2 The Simplification Problem
 
-Mechanistic interpretability seeks a simplified graph $G'$ such that:
+We want to build a simplified graph $G'$ with four properties.
 
-1. **Nodes** $V'$ represent meaningful computational units.
-2. **Edges** $E'$ represent information flow between these units.
-3. The simplified graph **preserves behavior** $B(x)$ for the inputs $x$ of interest.
-4. The simplified graph is **significantly smaller** than the full graph, in the sense $|V'| \ll |V|$ and $|E'| \ll |E|$.
+1. **Nodes** $V'$ stand for meaningful computational units.
+2. **Edges** $E'$ stand for real information flow between those units.
+3. The simplified graph **preserves the behavior** $B(x)$ we care about, for the inputs $x$ we care about.
+4. The simplified graph is **much smaller** than the full graph: $|V'| \ll |V|$ and $|E'| \ll |E|$.
 
-Formally, we want a surjective map $\pi: V \to V'$ such that for every edge $(u, v) \in E$ in the full graph, there is a corresponding directed path in $G'$ from $\pi(u)$ to $\pi(v)$ that preserves the functional dependence: intervening on the value carried at $\pi(u)$ changes the value computed at $\pi(v)$ in the same way that intervening on $u$ changes $v$ in the original graph, restricted to the input distribution under study.
+To state this precisely: we want a surjective map $\pi: V \to V'$, sending each node of the full graph to a node of the simplified graph, such that for every edge $(u, v) \in E$ there is a directed path in $G'$ from $\pi(u)$ to $\pi(v)$. That path must preserve the actual dependence: if we intervene on the value at $\pi(u)$, the value at $\pi(v)$ must change in the same way that intervening on $u$ changes $v$ in the original graph, at least for the inputs $x$ we are studying. This is a strong requirement. A grouping that only *looks* right on a few examples, without this intervention property, is not yet a valid simplification.
 
-<img src="../../images/fig2_1_graph_simplification.svg" alt="A full computational graph with thousands of nodes collapsing into a simplified circuit graph with a handful of interpretable nodes." width="100%">
+<img src="fig2_1_graph_simplification.svg" alt="A full computational graph with thousands of nodes collapsing into a simplified circuit graph with a handful of interpretable nodes." width="100%">
 
-*Figure 2.1: A full computational graph (left) collapses under $\pi$ into a simplified circuit graph (right). The simplified graph preserves the target behavior while remaining small enough to read.*
+*Figure 2.1: A full computational graph (left) collapses under $\pi$ into a simplified circuit graph (right). The simplified graph keeps the target behavior while becoming small enough for a person to read.*
 
 ### 2.2.3 Example: Simplifying an MLP
 
-Consider a three layer MLP with 512 hidden units per layer. The full graph has $O(512^2)$ edges per layer, roughly 786,000 edges in total across the layer. A mechanistic explanation might read:
+Take a three layer MLP with 512 hidden units in each layer. The full graph has $O(512^2)$ edges per layer, about 786,000 edges in total across that layer. A mechanistic story might say:
 
 > "Layer 1 detects edges, Layer 2 detects textures, Layer 3 detects objects."
 
-This is a **compression ratio of roughly $10^5$**. But the explanation is only valid if every claim in it can be validated with **causal evidence**, meaning a controlled intervention on the graph rather than a mere correlation observed in the data: correlation bounds what a claim could be, intervention certifies that it is true.
+That is a **compression ratio of roughly $10^5$**. This story is only worth trusting if every part of it can be checked with **causal evidence**: a controlled intervention on the graph, not just a pattern noticed in the data. Correlation tells us what a claim *might* be. Intervention tells us whether it is *actually* true.
 
 ---
 
@@ -77,13 +89,13 @@ This is a **compression ratio of roughly $10^5$**. But the explanation is only v
 
 ### 2.3.1 What Is a Representation?
 
-An **internal representation** is a vector $h \in \mathbb{R}^d$ produced at some layer of the network. The same vector may simultaneously encode many variables (sentiment, syntax, topic, and even the position of a word in a sentence), each encoded in a possibly different geometric structure.
+An **internal representation** is a vector $h \in \mathbb{R}^d$ produced at some layer of the network. The same vector can carry several variables at once: sentiment, grammar, topic, even the position of a word in its sentence. Each of these variables might live in a different geometric shape inside that one vector.
 
-Think of $h$ as a high dimensional message passed from one part of the network to another. The central question is: what does that message *say*, and, more precisely, which parts of it does the rest of the network actually *use*?
+Think of $h$ as a long message passed from one part of the network to another. The real question is not just "what does this message say," but "which parts of it does the rest of the network actually read and use."
 
 ### 2.3.2 Linear Decomposition
 
-Suppose $h$ is well approximated by $k$ features $v_1, \dots, v_k \in \mathbb{R}^d$. We can write:
+Suppose $h$ can be approximated using $k$ feature directions $v_1, \dots, v_k \in \mathbb{R}^d$:
 
 $$
 h = \sum_{i=1}^{k} a_i v_i + \varepsilon,
@@ -91,70 +103,75 @@ $$
 
 where:
 
-- $v_i$ are **feature directions** (not necessarily orthogonal, and not necessarily linearly independent when $k > d$),
-- $a_i \in \mathbb{R}$ are **feature coefficients** (activations),
-- $\varepsilon$ is **residual noise**, the component of $h$ not modeled by $\mathrm{span}\{v_1, \dots, v_k\}$.
+- $v_i$ are **feature directions** (they need not be perpendicular to each other, and need not be linearly independent when $k > d$),
+- $a_i \in \mathbb{R}$ are **feature coefficients**, also called activations,
+- $\varepsilon$ is **residual noise**: the part of $h$ that $\mathrm{span}\{v_1, \dots, v_k\}$ cannot explain.
 
-If the $v_i$ are orthonormal and $k \le d$, the $a_i$ are given exactly by the orthogonal projection $a_i = v_i^\top h$ and $\varepsilon$ is the component of $h$ orthogonal to $\mathrm{span}\{v_i\}$. If the $v_i$ are not orthogonal, or $k > d$ (an **overcomplete** dictionary), the coefficients must instead be obtained by solving a least squares or sparse coding problem, and the decomposition is no longer unique without an additional regularizer, typically an $\ell_0$ or $\ell_1$ sparsity penalty on $a$. The representation is called **distributed** when $k \gg 1$ and no single $v_i$ carries most of the variance of $h$, and **local** when a single coordinate or direction dominates.
+**Case 1: orthonormal directions, $k \le d$.** Then the coefficients are given exactly by orthogonal projection, $a_i = v_i^\top h$, and $\varepsilon$ is exactly the part of $h$ perpendicular to $\mathrm{span}\{v_i\}$. This case is simple and unique.
+
+**Case 2: non-orthogonal or overcomplete directions, $k > d$.** Now there is no single correct answer for $a$. We must solve a least squares or sparse coding problem, and we need an extra assumption, usually an $\ell_0$ or $\ell_1$ penalty that favors few nonzero coefficients, to pick out one solution among many.
+
+We call the representation **distributed** when $k \gg 1$ and no single $v_i$ carries most of the variance of $h$. We call it **local** when one coordinate or direction does almost all the work.
 
 ### 2.3.3 The Information Theoretic View
 
-Let $h$ be a representation and $Y$ a target variable, jointly distributed according to $p(h, y)$. The **mutual information** is:
+Let $h$ be a representation and $Y$ a target variable, with a joint distribution $p(h, y)$. The **mutual information** between them is:
 
 $$
 I(h; Y) = \mathbb{E}_{p(h, y)}\left[\log \frac{p(h, y)}{p(h)\,p(y)}\right] = D_{\mathrm{KL}}\bigl(p(h,y) \,\|\, p(h)p(y)\bigr).
 $$
 
-Two structural facts matter for interpretability work:
+Two facts about $I$ matter for our purposes.
 
-- $I(h; Y) \ge 0$, with equality if and only if $h$ and $Y$ are independent.
-- **Data processing inequality.** If $Y \to h \to \hat{Y}$ forms a Markov chain, that is $\hat Y$ is computed from $h$ alone, then $I(h; Y) \ge I(\hat{Y}; Y)$. No downstream processing of $h$ can manufacture information about $Y$ that was not already present in $h$.
+**Fact 1 (non-negativity).** $I(h; Y) \ge 0$, with equality exactly when $h$ and $Y$ are independent. This follows from Jensen's inequality applied to the concave function $\log$, since $I(h;Y) = -\mathbb{E}\left[\log \frac{p(h)p(y)}{p(h,y)}\right] \ge -\log \mathbb{E}\left[\frac{p(h)p(y)}{p(h,y)}\right] = -\log 1 = 0$.
 
-Neither fact, however, tells us about causal structure. In particular:
+**Fact 2 (data processing inequality).** If $Y \to h \to \hat{Y}$ is a Markov chain, meaning $\hat Y$ is computed from $h$ alone and gets no other information about $Y$, then $I(h; Y) \ge I(\hat{Y}; Y)$. In plain terms: no amount of downstream processing of $h$ can create information about $Y$ that was not already inside $h$.
 
-- $I(h; Y) > 0$ does **not** imply $h$ causes $Y$.
-- $I(h; Y) > 0$ does **not** imply $Y$ causes $h$.
-- $I(h; Y) > 0$ is consistent with both being effects of a common, unobserved cause $Z$, i.e. a confounder.
+Neither fact tells us anything about causal direction. In particular:
 
-**Causal relevance requires intervention, not just information.** This is the central lesson of Chapter 1, and it bears repeating here in sharper form: mutual information is a ceiling on how much a representation could matter mechanistically, not a certificate that it does.
+- $I(h; Y) > 0$ does **not** mean $h$ causes $Y$.
+- $I(h; Y) > 0$ does **not** mean $Y$ causes $h$.
+- $I(h; Y) > 0$ is fully consistent with $h$ and $Y$ both being effects of some hidden common cause $Z$, called a confounder, with no direct link between $h$ and $Y$ at all.
 
-<img src="../../images/fig2_2_information_overlap.svg" alt="Two overlapping circles representing h and Y, with the overlap labeled as mutual information; the direction of causation is left undetermined." width="90%">
+**Causal relevance needs intervention, not just information.** This is the central lesson of Chapter 1, worth repeating here in sharper form: mutual information is a ceiling on how much a representation *could* matter mechanistically. It is not proof that the representation *does* matter.
 
-*Figure 2.2: Representation $h$ and target $Y$ share mutual information, the overlapping region. The overlap alone does not fix the direction of causation, nor whether $h$ is actually used to compute $Y$ downstream.*
+<img src="fig2_2_information_overlap.svg" alt="Two overlapping circles representing h and Y, with the overlap labeled as mutual information; the direction of causation is left undetermined." width="90%">
+
+*Figure 2.2: The representation $h$ and the target $Y$ share mutual information, shown as the overlapping region. The overlap alone does not tell us which way the causation runs, or whether $h$ is actually used by the network to compute $Y$.*
 
 ---
 
 ## 2.4 The Zoo of Representations
 
-A concept need not live in a single neuron. It may be encoded in any of the following structures.
+A concept does not have to live inside one neuron. It can be encoded in any of the structures below.
 
 | Structure | Mathematical Form | Interpretability Implication |
 |:----------|:------------------|:-----------------------------|
-| **Single neuron** | $f(h) = h_i$ | Easy to identify, but often **polysemantic**: one neuron can encode several unrelated concepts. |
-| **Direction** | $f(h) = v^\top h$ | Requires finding $v$, but is more robust to basis choice than a single neuron. |
-| **Subspace** | $f(h) = \|P_V h\|$ | Requires an orthonormal basis $V$; captures multi dimensional features. |
-| **Sparse combination** | $f(h) = \sum_{i \in S} a_i (v_i^\top h)$ | Requires sparse autoencoders (SAEs); assumes features are sparse and possibly overcomplete. |
-| **Nonlinear manifold** | $f(h) = g(\phi(h))$ | Requires nonlinear probes; captures curved feature boundaries. |
-| **Circuit** | Distributed across layers | Requires graph level analysis; the feature is not localized to a single layer. |
+| **Single neuron** | $f(h) = h_i$ | Easy to find, but often **polysemantic**: one neuron may fire for several unrelated concepts. |
+| **Direction** | $f(h) = v^\top h$ | Harder to find than a single neuron, but far more robust to how we chose our coordinates. |
+| **Subspace** | $f(h) = \|P_V h\|$ | Needs an orthonormal basis $V$; captures features that need more than one dimension. |
+| **Sparse combination** | $f(h) = \sum_{i \in S} a_i (v_i^\top h)$ | Needs a sparse autoencoder (SAE); assumes features are sparse and possibly overcomplete. |
+| **Nonlinear manifold** | $f(h) = g(\phi(h))$ | Needs a nonlinear probe; captures curved feature boundaries. |
+| **Circuit** | Distributed across layers | Needs graph level analysis; the feature is not tied to a single layer. |
 
-> **The neuron is a coordinate; the feature is a functional pattern.** This distinction is fundamental. A neuron level claim ("neuron 847 fires for cats") is a claim about a *coordinate axis*, which is a modeling choice. A feature level claim ("the cat direction $v_{\text{cat}}$ is decodable from layer 5") is a claim about a *functional pattern* in the representation itself. As Exercise 2.1 makes precise, coordinates can be rotated by any orthogonal transformation without changing the function the network computes, while a genuine feature, defined as a direction with a demonstrated causal role, cannot be rotated away.
+> **A neuron is a coordinate. A feature is a functional pattern.** This is the key distinction of the whole chapter. A neuron level claim, "neuron 847 fires for cats," is a claim about one *coordinate axis*, and a coordinate axis is only a modeling choice, not a fact about the world. A feature level claim, "the cat direction $v_{\text{cat}}$ can be decoded from layer 5," is a claim about a *functional pattern* built into the representation itself. As Exercise 2.1 proves formally, we can rotate the coordinate axes by any orthogonal transformation without changing the function the network computes at all. A genuine feature, meaning a direction with a demonstrated causal role, survives that rotation. A single neuron, in general, does not.
 
-<img src="../../images/fig2_3_representation_zoo.svg" alt="Four panels showing a single neuron as a coordinate axis, a direction as a line through the origin, a subspace as a shaded plane, and a nonlinear manifold as a curved surface." width="100%">
+<img src="fig2_3_representation_zoo.svg" alt="Four panels showing a single neuron as a coordinate axis, a direction as a line through the origin, a subspace as a shaded plane, and a nonlinear manifold as a curved surface." width="100%">
 
-*Figure 2.3: Four representational structures in a 2D slice of high dimensional space. A single neuron is a coordinate axis. A direction is a line through the origin. A subspace is spanned by a basis $V$. A nonlinear manifold is a curved surface parameterized by $\phi$.*
+*Figure 2.3: Four representational structures in a 2D slice of a high dimensional space. A single neuron is a coordinate axis. A direction is a line through the origin. A subspace is spanned by a basis $V$. A nonlinear manifold is a curved surface parameterized by $\phi$.*
 
 ---
 
 ## 2.5 Why Representations Look the Way They Do
 
-Representation structure does not fall from the sky. It emerges from the interaction of four forces:
+The shape of a representation is not random. It comes from four forces acting together.
 
-1. **Architecture.** The inductive biases of the network (attention, convolutions, residual connections) constrain the space of representations that are even reachable by gradient descent.
-2. **Optimization.** Gradient descent finds parameter configurations that minimize the loss on the training distribution. Nothing in the optimization objective rewards interpretability directly.
-3. **Data.** The data distribution $p(x)$ determines which features are statistically useful to encode, and how correlated those features are with one another.
-4. **Objective.** The loss function determines which of the useful features are actually *selected for*, among many that would fit the data equally well.
+1. **Architecture.** The built-in structure of the network, such as attention, convolutions, or residual connections, limits which representations gradient descent can ever reach in the first place.
+2. **Optimization.** Gradient descent finds parameters that minimize the loss on the training data. Nothing in that process rewards a representation for being easy for humans to read.
+3. **Data.** The distribution $p(x)$ of the training data decides which features are useful to encode, and how correlated those features tend to be with each other.
+4. **Objective.** The loss function decides which of the useful features actually get **selected for**, out of many that would fit the data equally well.
 
-These four forces jointly push representations into a high dimensional geometry that is statistically efficient for the task but not necessarily aligned with human concepts. Our job is to reverse engineer that geometry.
+Together, these four forces push representations toward a geometry that is efficient for the task, but not necessarily aligned with the concepts humans use. Our job in this book is to reverse engineer that geometry.
 
 ---
 
@@ -277,7 +294,7 @@ def compute_representation_geometry(
 
 ## 2.7 Measurement: What Does a Representation Contain?
 
-Given a representation $h$ and a target variable $Y$, here are four ways to ask what $h$ knows about $Y$, in increasing order of evidential strength.
+Given a representation $h$ and a target variable $Y$, here are four ways to ask what $h$ knows about $Y$, ordered from weakest to strongest evidence.
 
 ### 2.7.1 Linear Predictability
 
@@ -287,33 +304,33 @@ $$
 \hat{W}, \hat{b} = \arg\min_{W, b} \; \mathbb{E}\bigl[\|Y - (W h + b)\|^2\bigr].
 $$
 
-Report $R^2$ (regression) or accuracy (classification) on held out data. If $R^2$ is high, $Y$ is **linearly decodable** from $h$. This is necessary but not sufficient for causal relevance: a linear probe can succeed purely because $h$ and $Y$ share a confound.
+Report $R^2$ for regression, or accuracy for classification, always on held out data the probe never trained on. A high $R^2$ means $Y$ is **linearly decodable** from $h$. This is necessary but not sufficient for causal relevance: a linear probe can succeed for the wrong reason, purely because $h$ and $Y$ happen to share a confounder.
 
 ### 2.7.2 Nonlinear Predictability
 
-Train an MLP probe $\hat Y = g_\theta(h)$ for some nonlinear $g_\theta$. If the nonlinear probe attains materially higher $R^2$ or accuracy than the best linear probe, $Y$ is encoded **nonlinearly** in $h$, meaning it lies on a curved decision boundary rather than a hyperplane.
+Train an MLP probe $\hat Y = g_\theta(h)$, where $g_\theta$ is nonlinear. If this probe does clearly better than the best possible linear probe, then $Y$ is encoded **nonlinearly** in $h$: it sits on a curved boundary that a straight hyperplane cannot capture.
 
 ### 2.7.3 Mutual Information Estimation
 
-Estimate $I(h; Y)$ using one of:
+Estimate $I(h; Y)$ using one of these methods:
 
-- **Binning.** Discretize $h$ and $Y$ into bins and compute the discrete mutual information directly from empirical frequencies.
-- **k nearest neighbor estimators.** The Kraskov Stögbauer Grassberger (KSG) estimator, which avoids binning by using local neighbor distances.
-- **Neural estimators.** MINE (Mutual Information Neural Estimation) or InfoNCE, which lower bound $I(h;Y)$ via a learned critic function.
+- **Binning.** Sort $h$ and $Y$ into bins, then compute mutual information directly from the resulting frequencies.
+- **k nearest neighbor estimators.** The Kraskov Stögbauer Grassberger (KSG) estimator, which avoids binning by measuring distances to nearby points instead.
+- **Neural estimators.** MINE (Mutual Information Neural Estimation) or InfoNCE, which produce a lower bound on $I(h;Y)$ using a trained critic network.
 
 ### 2.7.4 Causal Effect (The Gold Standard)
 
-Intervene on $h$, using Pearl's $do$ operator to denote a forced assignment that overrides the value $h$ would otherwise take, and measure the resulting change in $Y$:
+Force $h$ to take a chosen value, using Pearl's $do$ operator to mean "override $h$, ignoring whatever would normally produce it," and measure how much $Y$ changes as a result:
 
 $$
 \Delta_Y = \mathbb{E}\bigl[Y \mid do(h = h_{\text{intervened}})\bigr] - \mathbb{E}\bigl[Y \mid do(h = h_{\text{natural}})\bigr].
 $$
 
-Because $do(\cdot)$ severs the incoming edges to $h$ before fixing its value, $\Delta_Y \ne 0$ is evidence that $h$ lies on a causal path to $Y$ within the model, not merely that the two are correlated. This requires careful experimental design; see Chapter 1 and Appendix E.
+Because $do(\cdot)$ cuts every incoming edge to $h$ before fixing its value, a nonzero $\Delta_Y$ is real evidence that $h$ sits on a causal path to $Y$ inside the model. It is not just a coincidence in the data. This kind of experiment needs careful design; see Chapter 1 and Appendix E.
 
-<img src="../../images/fig2_4_measurement_pyramid.svg" alt="A pyramid with four levels: linear probe at the base, then nonlinear probe, then mutual information, then causal intervention at the apex." width="80%">
+<img src="fig2_4_measurement_pyramid.svg" alt="A pyramid with four levels: linear probe at the base, then nonlinear probe, then mutual information, then causal intervention at the apex." width="80%">
 
-*Figure 2.4: The four levels of measurement, from linear probe (weakest) to causal intervention (strongest). Each step up costs more compute and licenses a stronger claim about mechanism.*
+*Figure 2.4: The four levels of measurement, from linear probe (weakest) to causal intervention (strongest). Each level up costs more compute, and buys a stronger claim about mechanism.*
 
 ---
 
@@ -323,7 +340,7 @@ Measurement tells us what a representation *contains*. Intervention tells us wha
 
 ### 2.8.1 Steering Along a Direction
 
-Add a vector along a specific direction in representation space:
+Add a vector along one chosen direction in representation space:
 
 ```python
 def intervene_on_direction(
@@ -366,7 +383,7 @@ def intervene_on_direction(
 
 ### 2.8.2 Ablating a Subspace
 
-Remove the component of $h$ lying in a subspace spanned by orthonormal basis vectors $V = [v_1, \dots, v_k]$:
+Remove the part of $h$ that lies inside a subspace spanned by orthonormal basis vectors $V = [v_1, \dots, v_k]$:
 
 ```python
 def ablate_subspace(
@@ -401,59 +418,63 @@ def ablate_subspace(
     return output
 ```
 
-Mathematically, ablation computes:
+In matrix form, ablation computes:
 
 $$
 h_{\text{ablated}} = h - P_V h = (I - V V^\top) h,
 $$
 
-where $P_V = V V^\top$ is the orthogonal projector onto $\mathrm{span}(V)$, and $I - P_V$ is itself an orthogonal projector onto the orthogonal complement $\mathrm{span}(V)^{\perp}$, since $P_V^2 = P_V$ and $P_V^\top = P_V$.
+where $P_V = V V^\top$ is the orthogonal projector onto $\mathrm{span}(V)$.
 
-<img src="../../images/fig2_5_steering_vs_ablation.svg" alt="Left panel shows steering as a point displaced along a direction vector. Right panel shows ablation as a point projected onto a subspace, flattening one coordinate to zero." width="100%">
+**Claim.** $I - P_V$ is itself an orthogonal projector, onto the orthogonal complement $\mathrm{span}(V)^{\perp}$.
 
-*Figure 2.5: Steering versus ablation. Steering (left) displaces the representation along a chosen direction. Ablation (right) projects out an entire subspace, flattening the representation along that subspace to zero.*
+*Proof.* Since the columns of $V$ are orthonormal, $V^\top V = I_k$, so $P_V^2 = V V^\top V V^\top = V (V^\top V) V^\top = V V^\top = P_V$: applying the projection twice does nothing new. Also $P_V^\top = (VV^\top)^\top = VV^\top = P_V$, so $P_V$ is symmetric. A symmetric matrix satisfying $P_V^2 = P_V$ is exactly the definition of an orthogonal projector, and one checks directly that $(I-P_V)^2 = I - 2P_V + P_V^2 = I - P_V$ and $(I-P_V)^\top = I - P_V$, so $I - P_V$ is an orthogonal projector too. Its image is $\{h - P_V h : h \in \mathbb{R}^d\}$, which is exactly the set of vectors orthogonal to every column of $V$, i.e. $\mathrm{span}(V)^{\perp}$. $\blacksquare$
+
+<img src="fig2_5_steering_vs_ablation.svg" alt="Left panel shows steering as a point displaced along a direction vector. Right panel shows ablation as a point projected onto a subspace, flattening one coordinate to zero." width="100%">
+
+*Figure 2.5: Steering versus ablation. Steering (left) moves the representation along a chosen direction. Ablation (right) removes an entire subspace, flattening the representation to zero along that subspace.*
 
 ---
 
 ## 2.9 Falsification
 
-A representation hypothesis is **falsified** if any of the following hold:
+A representation hypothesis is **falsified** if any of the following are true.
 
-1. **Poor generalization.** The feature direction does not predict the target variable on held out data.
-2. **No causal effect.** Ablating the direction does not change the target behavior, i.e. $\Delta_Y \approx 0$.
-3. **Better alternative.** Another direction explains more variance in the behavior under the same measurement protocol.
-4. **Confounding.** The representation encodes the target variable only through a confounder, so the apparent dependence disappears once the confounder is controlled for or held fixed.
+1. **Poor generalization.** The feature direction fails to predict the target variable on held out data.
+2. **No causal effect.** Ablating the direction does not change the target behavior, that is, $\Delta_Y \approx 0$.
+3. **Better alternative.** A different direction explains more of the behavior under the same measurement protocol.
+4. **Confounding.** The apparent dependence on the target variable disappears once we control for, or hold fixed, some confounder that explains both.
 
-Each of these is a separate, testable claim. A mechanistic hypothesis is only considered established once it survives all four.
+Each of these four points is a separate, testable claim. We only call a mechanistic hypothesis established once it has survived all four tests.
 
 ---
 
 ## 2.10 Reproduction Checklist
 
-To make your representation analysis reproducible, record:
+To make a representation analysis reproducible, record all of the following.
 
 1. **Model architecture** and checkpoint hash.
-2. **Layer names** and exact extraction points.
-3. **Feature directions**, or the method used to compute them (PCA, SAE, etc.), including hyperparameters.
+2. **Layer names** and the exact points where activations were extracted.
+3. **Feature directions**, or the exact method used to find them (PCA, SAE, etc.), including every hyperparameter.
 4. **Input distribution** and preprocessing pipeline.
 5. **Random seeds** and software versions.
-6. **Raw representations** and analysis code.
+6. **Raw representations** and the analysis code itself.
 
-Without this record, your result is a story, not a scientific finding.
+Without this record, a result is a story, not a scientific finding.
 
 ---
 
 ## 2.11 Alternative Explanations
 
-Before you declare victory, consider these five traps.
+Before declaring victory, check for these five traps.
 
 | Trap | What It Means | How to Test |
 |:-----|:------------|:------------|
-| **Multiplexing** | $h$ encodes $Y$ and other variables simultaneously, along overlapping or non orthogonal directions | Check whether ablating the $Y$ direction also disrupts unrelated behaviors. |
-| **Spurious decoding** | The linear probe exploits a correlation in the training distribution rather than a causal structure the network relies on | Test on counterfactual inputs where the correlation is broken by construction. |
-| **Basis ambiguity** | The recovered feature direction is one of many directions related by a rotation of the true underlying basis | Check robustness of the finding under orthogonal transformations of the representation space (see Exercise 2.1). |
-| **Nonlinear encoding** | $Y$ is a nonlinear function of $h$ that a linear probe cannot detect at all | Compare linear versus nonlinear probe performance directly. |
-| **Downstream epiphenomenon** | $h$ correlates with $Y$ but does not lie on any causal path from $h$ to $Y$ inside the network | Perform the ablation test: does removing the feature direction actually change $Y$? |
+| **Multiplexing** | $h$ encodes $Y$ and other variables at the same time, along directions that overlap or are not orthogonal | Check whether ablating the $Y$ direction also disrupts unrelated behaviors. |
+| **Spurious decoding** | The linear probe is exploiting a coincidence in the training data, not a real causal structure the network relies on | Test on counterfactual inputs where that coincidence is broken on purpose. |
+| **Basis ambiguity** | The direction we found is only one of many, related to each other by a rotation of the true underlying basis | Check whether the finding survives an orthogonal transformation of the representation space (see Exercise 2.1). |
+| **Nonlinear encoding** | $Y$ depends on $h$ nonlinearly, in a way a linear probe cannot detect at all | Compare linear against nonlinear probe performance directly. |
+| **Downstream epiphenomenon** | $h$ correlates with $Y$, but sits nowhere on the network's actual causal path from $h$ to $Y$ | Run the ablation test: does removing the feature direction actually change $Y$? |
 
 ---
 
@@ -462,49 +483,49 @@ Before you declare victory, consider these five traps.
 ### Mathematical
 
 **Exercise 2.1, Basis Ambiguity.**
-Let $\theta = \{W^{(\ell)}, b^{(\ell)}\}_{\ell=1}^L$ be the parameters of the feedforward network in Section 2.2.1, with elementwise nonlinearity $f^{(\ell)}$ commuting suitably under permutation of coordinates. Show that for any orthogonal matrix $Q^{(\ell)}$ satisfying $f^{(\ell)}(Q^{(\ell)} u) = Q^{(\ell)} f^{(\ell)}(u)$ for all $u$ (as holds, for instance, for ReLU composed with a signed permutation matrix), replacing all weight matrices as
+Let $\theta = \{W^{(\ell)}, b^{(\ell)}\}_{\ell=1}^L$ be the parameters of the feedforward network from Section 2.2.1, and suppose the elementwise nonlinearity $f^{(\ell)}$ commutes appropriately with coordinate permutations. Prove that for any orthogonal matrix $Q^{(\ell)}$ satisfying $f^{(\ell)}(Q^{(\ell)} u) = Q^{(\ell)} f^{(\ell)}(u)$ for every $u$ (this holds, for example, when $f^{(\ell)}$ is ReLU and $Q^{(\ell)}$ is a signed permutation matrix), replacing every weight as
 
 $$
 W^{(\ell)} \mapsto Q^{(\ell)} W^{(\ell)} \bigl(Q^{(\ell-1)}\bigr)^\top, \qquad b^{(\ell)} \mapsto Q^{(\ell)} b^{(\ell)}
 $$
 
-preserves the network function $f_\theta(x)$ for every input $x$, while changing every neuron level interpretation of layer $\ell$. What does this imply for claims of the form "neuron $i$ in layer $\ell$ encodes concept $C$", and what additional property must a *direction* $v$ have to survive this transformation as a well posed claim?
+leaves the network function $f_\theta(x)$ exactly the same for every input $x$, while changing every neuron level interpretation at layer $\ell$. What does this mean for a claim like "neuron $i$ in layer $\ell$ encodes concept $C$"? What extra property must a *direction* $v$ have in order to survive this transformation as a meaningful, well defined claim?
 
 **Exercise 2.2, Representation Manifold.**
-Prove that the set $\mathcal{M} = \{h(x) : x \in \mathcal{X}\}$ forms a (possibly singular) manifold in $\mathbb{R}^d$ under mild smoothness assumptions on $h(\cdot)$. State a formal condition on the Jacobian $J_h(x) = \partial h / \partial x$, in terms of its rank as a function of $x$, under which $\mathcal{M}$ is a smooth submanifold locally, and a further condition under which it is well approximated by an affine subspace over a neighborhood of $x$.
+Prove that the set $\mathcal{M} = \{h(x) : x \in \mathcal{X}\}$ forms a (possibly singular) manifold in $\mathbb{R}^d$, under mild smoothness assumptions on $h(\cdot)$. State a precise condition on the rank of the Jacobian $J_h(x) = \partial h / \partial x$, as a function of $x$, under which $\mathcal{M}$ is a smooth submanifold near that point. State a further condition under which $\mathcal{M}$ is well approximated by a flat, affine subspace in a neighborhood of $x$.
 
 ### Implementation
 
 **Exercise 2.3, Graph Tracer.**
 Implement a computational graph tracer for a simple MLP that returns:
 
-- The DAG as an adjacency list.
-- A topological ordering of the nodes.
-- The in-degree and out-degree of each node.
+- the DAG as an adjacency list,
+- a topological ordering of the nodes,
+- the in-degree and out-degree of each node.
 
-Test it on a three layer MLP and verify computationally that the resulting graph is acyclic.
+Test it on a three layer MLP, and verify by computation that the resulting graph really is acyclic.
 
 **Exercise 2.4, Principal Angles.**
-Write a function `principal_angles(U, V)` that computes the principal angles between two subspaces $U, V \subseteq \mathbb{R}^d$ using the SVD of $U^\top V$, where the columns of $U$ and $V$ are orthonormal bases of the respective subspaces. The principal angles $\theta_1 \le \cdots \le \theta_k$ satisfy
+Write a function `principal_angles(U, V)` that computes the principal angles between two subspaces $U, V \subseteq \mathbb{R}^d$, using the SVD of $U^\top V$, where the columns of $U$ and $V$ are orthonormal bases of the two subspaces. The principal angles $\theta_1 \le \cdots \le \theta_k$ satisfy
 
 $$
 \cos \theta_i = \sigma_i(U^\top V),
 $$
 
-where $\sigma_i$ is the $i$-th singular value of $U^\top V$ in decreasing order. Verify numerically that $\theta_i = 0$ for all $i$ when $U$ and $V$ span the same subspace.
+where $\sigma_i$ is the $i$-th singular value of $U^\top V$, listed in decreasing order. Confirm numerically that $\theta_i = 0$ for every $i$ when $U$ and $V$ span the same subspace.
 
 ### Experimental
 
 **Exercise 2.5, Latent Variable Alignment.**
-Train a three layer MLP on a synthetic task with five known latent variables $z_1, \dots, z_5$. Apply PCA to the hidden layer activations and measure how well each principal component $PC_i$ aligns with each latent variable $z_j$, using $R^2$ from a linear regression of $z_j$ on $PC_i$. Report the alignment matrix $A_{ij} = R^2(PC_i, z_j)$, and discuss what a near diagonal $A$ would imply versus a dense $A$.
+Train a three layer MLP on a synthetic task built from five known latent variables $z_1, \dots, z_5$. Run PCA on the hidden layer activations, and measure how well each principal component $PC_i$ lines up with each latent variable $z_j$, using the $R^2$ of a linear regression of $z_j$ on $PC_i$. Report the alignment matrix $A_{ij} = R^2(PC_i, z_j)$. Explain what a near-diagonal $A$ would tell us, and what a dense $A$ would tell us instead.
 
 ### Research
 
 **Exercise 2.6, Mutual Information versus Causation.**
-Prove or disprove: if $I(h; Y) > 0$, there exists an intervention $do(h = h')$ that changes the distribution of $Y$. If the statement is false, provide an explicit counterexample. As a hint, consider a collider structure in which $h$ and $Y$ are both effects of a common cause $Z$ but neither causes the other; construct $p(h, Y, Z)$ explicitly and verify $I(h;Y) > 0$ while $do(h=h')$ leaves the marginal of $Y$ unchanged.
+Prove or disprove: if $I(h; Y) > 0$, there must exist some intervention $do(h = h')$ that changes the distribution of $Y$. If the claim is false, build an explicit counterexample. Hint: consider a collider structure, where $h$ and $Y$ are both effects of a shared cause $Z$, but neither one causes the other. Write down $p(h, Y, Z)$ explicitly, confirm that $I(h;Y) > 0$, and show that $do(h=h')$ leaves the marginal distribution of $Y$ completely unchanged.
 
 **Exercise 2.7, Layer Wise Interpretability.**
-Investigate whether distributed representations in early layers of transformers are more or less interpretable, by the measurement pyramid of Section 2.7, than distributed representations in late layers. Design an experiment using both linear probes and causal ablations across matched layers. State your findings as falsifiable claims in the style of Section 2.9.
+Investigate whether distributed representations in early transformer layers are more or less interpretable, by the measurement pyramid of Section 2.7, than those in late layers. Design an experiment that uses both linear probes and causal ablations across matched layers. Write your findings as falsifiable claims, in the style of Section 2.9.
 
 ---
 
