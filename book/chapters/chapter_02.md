@@ -59,7 +59,7 @@ Mechanistic interpretability seeks a simplified graph $G'$ such that:
 
 Formally, we want a surjective map $\pi: V \to V'$ such that for every edge $(u, v) \in E$ in the full graph, there is a corresponding directed path in $G'$ from $\pi(u)$ to $\pi(v)$ that preserves the functional dependence: intervening on the value carried at $\pi(u)$ changes the value computed at $\pi(v)$ in the same way that intervening on $u$ changes $v$ in the original graph, restricted to the input distribution under study.
 
-<img src="fig2_1_graph_simplification.svg" alt="A full computational graph with thousands of nodes collapsing into a simplified circuit graph with a handful of interpretable nodes." width="100%">
+<img src="../../images/fig2_1_graph_simplification.svg" alt="A full computational graph with thousands of nodes collapsing into a simplified circuit graph with a handful of interpretable nodes." width="100%">
 
 *Figure 2.1: A full computational graph (left) collapses under $\pi$ into a simplified circuit graph (right). The simplified graph preserves the target behavior while remaining small enough to read.*
 
@@ -118,7 +118,7 @@ Neither fact, however, tells us about causal structure. In particular:
 
 **Causal relevance requires intervention, not just information.** This is the central lesson of Chapter 1, and it bears repeating here in sharper form: mutual information is a ceiling on how much a representation could matter mechanistically, not a certificate that it does.
 
-<img src="fig2_2_information_overlap.svg" alt="Two overlapping circles representing h and Y, with the overlap labeled as mutual information; the direction of causation is left undetermined." width="90%">
+<img src="../../images/fig2_2_information_overlap.svg" alt="Two overlapping circles representing h and Y, with the overlap labeled as mutual information; the direction of causation is left undetermined." width="90%">
 
 *Figure 2.2: Representation $h$ and target $Y$ share mutual information, the overlapping region. The overlap alone does not fix the direction of causation, nor whether $h$ is actually used to compute $Y$ downstream.*
 
@@ -139,7 +139,7 @@ A concept need not live in a single neuron. It may be encoded in any of the foll
 
 > **The neuron is a coordinate; the feature is a functional pattern.** This distinction is fundamental. A neuron level claim ("neuron 847 fires for cats") is a claim about a *coordinate axis*, which is a modeling choice. A feature level claim ("the cat direction $v_{\text{cat}}$ is decodable from layer 5") is a claim about a *functional pattern* in the representation itself. As Exercise 2.1 makes precise, coordinates can be rotated by any orthogonal transformation without changing the function the network computes, while a genuine feature, defined as a direction with a demonstrated causal role, cannot be rotated away.
 
-<img src="fig2_3_representation_zoo.svg" alt="Four panels showing a single neuron as a coordinate axis, a direction as a line through the origin, a subspace as a shaded plane, and a nonlinear manifold as a curved surface." width="100%">
+<img src="../../images/fig2_3_representation_zoo.svg" alt="Four panels showing a single neuron as a coordinate axis, a direction as a line through the origin, a subspace as a shaded plane, and a nonlinear manifold as a curved surface." width="100%">
 
 *Figure 2.3: Four representational structures in a 2D slice of high dimensional space. A single neuron is a coordinate axis. A direction is a line through the origin. A subspace is spanned by a basis $V$. A nonlinear manifold is a curved surface parameterized by $\phi$.*
 
@@ -311,7 +311,7 @@ $$
 
 Because $do(\cdot)$ severs the incoming edges to $h$ before fixing its value, $\Delta_Y \ne 0$ is evidence that $h$ lies on a causal path to $Y$ within the model, not merely that the two are correlated. This requires careful experimental design; see Chapter 1 and Appendix E.
 
-<img src="fig2_4_measurement_pyramid.svg" alt="A pyramid with four levels: linear probe at the base, then nonlinear probe, then mutual information, then causal intervention at the apex." width="80%">
+<img src="../../images/fig2_4_measurement_pyramid.svg" alt="A pyramid with four levels: linear probe at the base, then nonlinear probe, then mutual information, then causal intervention at the apex." width="80%">
 
 *Figure 2.4: The four levels of measurement, from linear probe (weakest) to causal intervention (strongest). Each step up costs more compute and licenses a stronger claim about mechanism.*
 
@@ -409,7 +409,7 @@ $$
 
 where $P_V = V V^\top$ is the orthogonal projector onto $\mathrm{span}(V)$, and $I - P_V$ is itself an orthogonal projector onto the orthogonal complement $\mathrm{span}(V)^{\perp}$, since $P_V^2 = P_V$ and $P_V^\top = P_V$.
 
-<img src="fig2_5_steering_vs_ablation.svg" alt="Left panel shows steering as a point displaced along a direction vector. Right panel shows ablation as a point projected onto a subspace, flattening one coordinate to zero." width="100%">
+<img src="../../images/fig2_5_steering_vs_ablation.svg" alt="Left panel shows steering as a point displaced along a direction vector. Right panel shows ablation as a point projected onto a subspace, flattening one coordinate to zero." width="100%">
 
 *Figure 2.5: Steering versus ablation. Steering (left) displaces the representation along a chosen direction. Ablation (right) projects out an entire subspace, flattening the representation along that subspace to zero.*
 
