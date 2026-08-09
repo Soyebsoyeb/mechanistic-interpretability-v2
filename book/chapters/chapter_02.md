@@ -135,7 +135,7 @@ Neither fact tells us anything about causal direction. In particular:
 
 **Causal relevance needs intervention, not just information.** This is the central lesson of Chapter 1, worth repeating here in sharper form: mutual information is a ceiling on how much a representation *could* matter mechanistically. It is not proof that the representation *does* matter.
 
-<img src="fig2_2_information_overlap.svg" alt="Two overlapping circles representing h and Y, with the overlap labeled as mutual information; the direction of causation is left undetermined." width="90%">
+<img src="../../images/fig2_2_information_overlap.svg" alt="Two overlapping circles representing h and Y, with the overlap labeled as mutual information; the direction of causation is left undetermined." width="90%">
 
 *Figure 2.2: The representation $h$ and the target $Y$ share mutual information, shown as the overlapping region. The overlap alone does not tell us which way the causation runs, or whether $h$ is actually used by the network to compute $Y$.*
 
@@ -156,7 +156,7 @@ A concept does not have to live inside one neuron. It can be encoded in any of t
 
 > **A neuron is a coordinate. A feature is a functional pattern.** This is the key distinction of the whole chapter. A neuron level claim, "neuron 847 fires for cats," is a claim about one *coordinate axis*, and a coordinate axis is only a modeling choice, not a fact about the world. A feature level claim, "the cat direction $v_{\text{cat}}$ can be decoded from layer 5," is a claim about a *functional pattern* built into the representation itself. As Exercise 2.1 proves formally, we can rotate the coordinate axes by any orthogonal transformation without changing the function the network computes at all. A genuine feature, meaning a direction with a demonstrated causal role, survives that rotation. A single neuron, in general, does not.
 
-<img src="fig2_3_representation_zoo.svg" alt="Four panels showing a single neuron as a coordinate axis, a direction as a line through the origin, a subspace as a shaded plane, and a nonlinear manifold as a curved surface." width="100%">
+<img src="../../images/fig2_3_representation_zoo.svg" alt="Four panels showing a single neuron as a coordinate axis, a direction as a line through the origin, a subspace as a shaded plane, and a nonlinear manifold as a curved surface." width="100%">
 
 *Figure 2.3: Four representational structures in a 2D slice of a high dimensional space. A single neuron is a coordinate axis. A direction is a line through the origin. A subspace is spanned by a basis $V$. A nonlinear manifold is a curved surface parameterized by $\phi$.*
 
@@ -328,7 +328,7 @@ $$
 
 Because $do(\cdot)$ cuts every incoming edge to $h$ before fixing its value, a nonzero $\Delta_Y$ is real evidence that $h$ sits on a causal path to $Y$ inside the model. It is not just a coincidence in the data. This kind of experiment needs careful design; see Chapter 1 and Appendix E.
 
-<img src="fig2_4_measurement_pyramid.svg" alt="A pyramid with four levels: linear probe at the base, then nonlinear probe, then mutual information, then causal intervention at the apex." width="80%">
+<img src="../../images/fig2_4_measurement_pyramid.svg" alt="A pyramid with four levels: linear probe at the base, then nonlinear probe, then mutual information, then causal intervention at the apex." width="80%">
 
 *Figure 2.4: The four levels of measurement, from linear probe (weakest) to causal intervention (strongest). Each level up costs more compute, and buys a stronger claim about mechanism.*
 
@@ -430,7 +430,7 @@ where $P_V = V V^\top$ is the orthogonal projector onto $\mathrm{span}(V)$.
 
 *Proof.* Since the columns of $V$ are orthonormal, $V^\top V = I_k$, so $P_V^2 = V V^\top V V^\top = V (V^\top V) V^\top = V V^\top = P_V$: applying the projection twice does nothing new. Also $P_V^\top = (VV^\top)^\top = VV^\top = P_V$, so $P_V$ is symmetric. A symmetric matrix satisfying $P_V^2 = P_V$ is exactly the definition of an orthogonal projector, and one checks directly that $(I-P_V)^2 = I - 2P_V + P_V^2 = I - P_V$ and $(I-P_V)^\top = I - P_V$, so $I - P_V$ is an orthogonal projector too. Its image is $\{h - P_V h : h \in \mathbb{R}^d\}$, which is exactly the set of vectors orthogonal to every column of $V$, i.e. $\mathrm{span}(V)^{\perp}$. $\blacksquare$
 
-<img src="fig2_5_steering_vs_ablation.svg" alt="Left panel shows steering as a point displaced along a direction vector. Right panel shows ablation as a point projected onto a subspace, flattening one coordinate to zero." width="100%">
+<img src="../../images/fig2_5_steering_vs_ablation.svg" alt="Left panel shows steering as a point displaced along a direction vector. Right panel shows ablation as a point projected onto a subspace, flattening one coordinate to zero." width="100%">
 
 *Figure 2.5: Steering versus ablation. Steering (left) moves the representation along a chosen direction. Ablation (right) removes an entire subspace, flattening the representation to zero along that subspace.*
 
