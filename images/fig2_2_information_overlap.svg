@@ -1,0 +1,32 @@
+<svg viewBox="0 0 700 420" xmlns="http://www.w3.org/2000/svg" font-family="Georgia, 'Times New Roman', serif">
+  <rect x="0" y="0" width="700" height="420" fill="#faf8f4"/>
+  <text x="350" y="38" text-anchor="middle" font-size="17" fill="#2b2622" font-weight="bold">Mutual information: overlap without direction</text>
+
+  <defs>
+    <clipPath id="clipLeft">
+      <circle cx="280" cy="220" r="130"/>
+    </clipPath>
+  </defs>
+
+  <circle cx="280" cy="220" r="130" fill="#cfe0f2" fill-opacity="0.6" stroke="#4a72a3" stroke-width="2"/>
+  <circle cx="420" cy="220" r="130" fill="#f2d9c9" fill-opacity="0.6" stroke="#b06a3c" stroke-width="2"/>
+
+  <g clip-path="url(#clipLeft)">
+    <circle cx="420" cy="220" r="130" fill="#c9b79b" fill-opacity="0.65"/>
+  </g>
+
+  <text x="210" y="220" text-anchor="middle" font-size="20" fill="#1f3a5f" font-weight="bold">h</text>
+  <text x="490" y="220" text-anchor="middle" font-size="20" fill="#6b3a19" font-weight="bold">Y</text>
+  <text x="350" y="216" text-anchor="middle" font-size="16" fill="#3a2c17" font-weight="bold">I(h; Y)</text>
+  <text x="350" y="236" text-anchor="middle" font-size="12" fill="#3a2c17">shared statistical</text>
+  <text x="350" y="250" text-anchor="middle" font-size="12" fill="#3a2c17">information</text>
+
+  <text x="350" y="378" text-anchor="middle" font-size="13.5" fill="#5b4636">Overlap area only certifies I(h;Y) &#62; 0.</text>
+  <text x="350" y="398" text-anchor="middle" font-size="13.5" fill="#5b4636">It does not say h &#8594; Y, Y &#8594; h, or h &#8592; Z &#8594; Y.</text>
+
+  <g font-size="12" fill="#7a6f5c">
+    <text x="150" y="120">h &#8594; Y?</text>
+    <text x="520" y="120">Y &#8594; h?</text>
+    <text x="330" y="120">common cause Z?</text>
+  </g>
+</svg>
