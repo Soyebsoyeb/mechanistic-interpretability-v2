@@ -22,7 +22,7 @@ where $c_i$ is the correct label for pattern $i$. This network also computes XOR
 
 Both networks agree perfectly on $\mathcal X$. Yet they tell two different stories about what is happening inside. $N_1$'s story is: the network computes a simple function of $x_1+x_2$ and applies a threshold. $N_2$'s story is: the network memorizes each input pattern on its own, with no shared structure between them. No amount of input and output data from $\mathcal X$ can tell these two stories apart. $\blacksquare$
 
-![Two different networks, N1 and N2, that agree on every point of the XOR domain but compute the answer through completely different internal structure.](../images/fig1_xor_networks.png)
+![Two different networks, N1 and N2, that agree on every point of the XOR domain but compute the answer through completely different internal structure.](../../images/fig1_xor_networks.png)
 
 *(Exercise 1 asks you to prove the general version of this fact, for any finite domain, not just XOR.)*
 
