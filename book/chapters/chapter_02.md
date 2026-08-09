@@ -71,7 +71,7 @@ We want to build a simplified graph $G'$ with four properties.
 
 To state this precisely: we want a surjective map $\pi: V \to V'$, sending each node of the full graph to a node of the simplified graph, such that for every edge $(u, v) \in E$ there is a directed path in $G'$ from $\pi(u)$ to $\pi(v)$. That path must preserve the actual dependence: if we intervene on the value at $\pi(u)$, the value at $\pi(v)$ must change in the same way that intervening on $u$ changes $v$ in the original graph, at least for the inputs $x$ we are studying. This is a strong requirement. A grouping that only *looks* right on a few examples, without this intervention property, is not yet a valid simplification.
 
-<img src="fig2_1_graph_simplification.svg" alt="A full computational graph with thousands of nodes collapsing into a simplified circuit graph with a handful of interpretable nodes." width="100%">
+<img src="../../images/fig2_1_graph_simplification.svg" alt="A full computational graph with thousands of nodes collapsing into a simplified circuit graph with a handful of interpretable nodes." width="100%">
 
 *Figure 2.1: A full computational graph (left) collapses under $\pi$ into a simplified circuit graph (right). The simplified graph keeps the target behavior while becoming small enough for a person to read.*
 
